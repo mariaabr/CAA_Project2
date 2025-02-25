@@ -5,7 +5,7 @@ Repository containing the first project developed in the Complementos de Aprendi
 1. [Introduction](#introduction)
 2. [Installation](#installation)
 3. [Usage](#usage)
-4. [Authors] (#authors)
+4. [Authors](#authors)
 5. [License](#license)
 
 ## Introduction
