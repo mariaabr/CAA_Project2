@@ -1,3 +1,6 @@
+# Model files (too big for Github)
+models/*.keras
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
