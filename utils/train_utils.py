@@ -1,0 +1,44 @@
+from tensorflow.keras import callbacks
+
+def get_callbacks(model_path, monitor='val_AUC', mode='max'):
+    """Get standard callbacks for model training"""
+    checkpoint_callback = callbacks.ModelCheckpoint(
+        model_path,
+        save_best_only=True,
+        monitor=monitor,
+        mode=mode
+    )
+    
+    early_stop_callback = callbacks.EarlyStopping(
+        monitor=monitor,
+        mode=mode,
+        patience=10,
+        restore_best_weights=True
+    )
+    
+    reduce_lr_callback = callbacks.ReduceLROnPlateau(
+        monitor='val_loss',
+        factor=0.2,
+        patience=5
+    )
+    
+    all_callbacks = [
+        checkpoint_callback,
+        early_stop_callback,
+        reduce_lr_callback
+    ]
+    
+    return all_callbacks
+
+def train_model(model, train_data, train_labels, val_data, val_labels, 
+                epochs=50, batch_size=32, callbacks=None):
+    """Train a model with given parameters and callbacks"""
+    history = model.fit(
+        train_data,
+        train_labels,
+        batch_size=batch_size,
+        epochs=epochs,
+        validation_data=(val_data, val_labels),
+        callbacks=callbacks
+    )
+    return history
