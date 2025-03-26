@@ -1,4 +1,6 @@
 import numpy as np
+import tensorflow as tf
+from tensorflow.keras import layers
 from tensorflow.keras.utils import to_categorical
 
 def load_data(data_path="../data/"):
@@ -26,7 +28,61 @@ def preprocess_data(images, labels):
     
     return images, labels
 
-def load_and_preprocess_data(data_path="../data/"):
+def create_augmentation_pipeline():
+    """Create a data augmentation pipeline for chest X-ray images."""
+    data_augmentation = tf.keras.Sequential([
+        # Randomly rotate images by up to 15 degrees
+        layers.RandomRotation(0.08),  # 0.08 ~= 15 degrees in radians
+        # Randomly shift images horizontally and vertically
+        layers.RandomTranslation(0.1, 0.1),
+        # Randomly zoom in or out
+        layers.RandomZoom(0.1),
+        # Adjust contrast
+        layers.RandomContrast(0.1),
+    ])
+    return data_augmentation
+
+def apply_augmentation(images, labels, batch_size=32):
+    """Apply data augmentation to images and labels.
+    
+    Args:
+        images: Preprocessed images (normalized, reshaped)
+        labels: One-hot encoded labels
+        batch_size: Batch size for the dataset
+        
+    Returns:
+        tf.data.Dataset: A dataset with augmented images
+    """
+    # Create tf.data.Dataset
+    dataset = tf.data.Dataset.from_tensor_slices((images, labels))
+    
+    # Create augmentation pipeline
+    augmentation = create_augmentation_pipeline()
+    
+    # Define the preprocessing function
+    def augment(image, label):
+        # Apply data augmentation
+        image = augmentation(image, training=True)
+        return image, label
+    
+    # Apply augmentation
+    augmented_dataset = dataset.map(augment, num_parallel_calls=tf.data.AUTOTUNE)
+    augmented_dataset = augmented_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    
+    return augmented_dataset
+
+def load_and_preprocess_data(data_path="../data/", augment=False, batch_size=32):
+    """Load and preprocess data, with optional augmentation.
+    
+    Args:
+        data_path: Path to the data directory
+        augment: Whether to apply data augmentation to training data
+        batch_size: Batch size if using augmentation
+        
+    Returns:
+        If augment=False: Regular numpy arrays (backward compatible)
+        If augment=True: tf.data.Dataset for training, numpy arrays for test/val
+    """
     train_images, train_labels, test_images, test_labels, val_images, val_labels = load_data(data_path)
     train_images, train_labels = preprocess_data(train_images, train_labels)
     test_images, test_labels = preprocess_data(test_images, test_labels)
@@ -39,4 +95,10 @@ def load_and_preprocess_data(data_path="../data/"):
     print("Val labels shape:", val_labels.shape)
     print("Test images shape:", test_images.shape)
     print("Test labels shape:", test_labels.shape)
-    return train_images, train_labels, test_images, test_labels, val_images, val_labels
+    
+    if augment:
+        print("\nApplying data augmentation to training data...")
+        train_dataset = apply_augmentation(train_images, train_labels, batch_size)
+        return train_dataset, (test_images, test_labels), (val_images, val_labels)
+    else:
+        return train_images, train_labels, test_images, test_labels, val_images, val_labels
