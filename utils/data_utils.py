@@ -71,7 +71,7 @@ def apply_augmentation(images, labels, batch_size=32):
     
     return augmented_dataset
 
-def load_and_preprocess_data(data_path="../data/", augment=False, batch_size=32):
+def load_and_preprocess_data(data_path="../data/", augment=False, batch_size=32, seed=42):
     """Load and preprocess data, with optional augmentation.
     
     Args:
@@ -98,7 +98,7 @@ def load_and_preprocess_data(data_path="../data/", augment=False, batch_size=32)
     
     if augment:
         print("\nApplying data augmentation to training data...")
-        train_dataset = apply_augmentation(train_images, train_labels, batch_size)
+        train_dataset = apply_augmentation(train_images, train_labels, batch_size, seed=seed)
         return train_dataset, (test_images, test_labels), (val_images, val_labels)
     else:
         return train_images, train_labels, test_images, test_labels, val_images, val_labels
