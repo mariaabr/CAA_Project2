@@ -31,7 +31,7 @@ def get_callbacks(model_path, monitor='val_AUC', mode='max'):
     return all_callbacks
 
 def train_model(model, train_data, train_labels, val_data, val_labels, 
-                epochs=50, batch_size=32, callbacks=None):
+                epochs=100, batch_size=32, callbacks=None, verbose=1):
     """Train a model with given parameters and callbacks"""
     history = model.fit(
         train_data,
@@ -39,6 +39,7 @@ def train_model(model, train_data, train_labels, val_data, val_labels,
         batch_size=batch_size,
         epochs=epochs,
         validation_data=(val_data, val_labels),
-        callbacks=callbacks
+        callbacks=callbacks,
+        verbose=verbose
     )
     return history

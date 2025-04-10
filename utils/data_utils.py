@@ -42,13 +42,14 @@ def create_augmentation_pipeline():
     ])
     return data_augmentation
 
-def apply_augmentation(images, labels, batch_size=32):
+def apply_augmentation(images, labels, batch_size=32, seed=42):
     """Apply data augmentation to images and labels.
     
     Args:
         images: Preprocessed images (normalized, reshaped)
         labels: One-hot encoded labels
         batch_size: Batch size for the dataset
+        seed: Random seed for reproducibility
         
     Returns:
         tf.data.Dataset: A dataset with augmented images
@@ -61,12 +62,16 @@ def apply_augmentation(images, labels, batch_size=32):
     
     # Define the preprocessing function
     def augment(image, label):
-        # Apply data augmentation
+        # Apply data augmentation with fixed seed
         image = augmentation(image, training=True)
         return image, label
     
-    # Apply augmentation
-    augmented_dataset = dataset.map(augment, num_parallel_calls=tf.data.AUTOTUNE)
+    # Set seed for shuffling
+    tf.random.set_seed(seed)
+    
+    # Apply augmentation and shuffling with seed
+    augmented_dataset = dataset.shuffle(buffer_size=len(images), seed=seed)
+    augmented_dataset = augmented_dataset.map(augment, num_parallel_calls=tf.data.AUTOTUNE)
     augmented_dataset = augmented_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
     
     return augmented_dataset
@@ -78,11 +83,18 @@ def load_and_preprocess_data(data_path="../data/", augment=False, batch_size=32,
         data_path: Path to the data directory
         augment: Whether to apply data augmentation to training data
         batch_size: Batch size if using augmentation
+        seed: Random seed for reproducibility
         
     Returns:
         If augment=False: Regular numpy arrays (backward compatible)
         If augment=True: tf.data.Dataset for training, numpy arrays for test/val
     """
+    # Set NumPy random seed for reproducibility
+    np.random.seed(seed)
+    
+    # Set TensorFlow random seed for reproducibility
+    tf.random.set_seed(seed)
+    
     train_images, train_labels, test_images, test_labels, val_images, val_labels = load_data(data_path)
     train_images, train_labels = preprocess_data(train_images, train_labels)
     test_images, test_labels = preprocess_data(test_images, test_labels)
