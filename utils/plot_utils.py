@@ -16,7 +16,7 @@ def plot_training_history(history, epochs):
     axes[0].set_ylabel('Accuracy')
     axes[0].set_title('Training and Validation Accuracy')
     axes[0].set_xlim([0, epochs])
-    axes[0].set_ylim([0, 1.5])
+    axes[0].set_ylim([0, 1.1])
     axes[0].legend()
     axes[0].grid(True)
     
@@ -42,7 +42,7 @@ def plot_training_history(history, epochs):
         axes[2].set_ylabel('AUC')
         axes[2].set_title('Training and Validation AUC')
         axes[2].set_xlim([0, epochs])
-        axes[2].set_ylim([0, 1.5])
+        axes[2].set_ylim([0, 1.1])
         axes[2].legend()
         axes[2].grid(True)
     
