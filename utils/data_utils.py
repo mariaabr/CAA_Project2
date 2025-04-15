@@ -28,17 +28,20 @@ def preprocess_data(images, labels):
     
     return images, labels
 
-def create_augmentation_pipeline():
+def create_augmentation_pipeline(seed=42):
     """Create a data augmentation pipeline for chest X-ray images."""
     data_augmentation = tf.keras.Sequential([
         # Randomly rotate images by up to 15 degrees
-        layers.RandomRotation(0.08),  # 0.08 ~= 15 degrees in radians
+        layers.RandomRotation(0.08, seed=seed),  # 0.08 ~= 15 degrees in radians
+
         # Randomly shift images horizontally and vertically
-        layers.RandomTranslation(0.1, 0.1),
+        layers.RandomTranslation(0.1, 0.1, seed=seed),  # 0.1 = 10% of the image size
+
         # Randomly zoom in or out
-        layers.RandomZoom(0.1),
+        layers.RandomZoom(0.1, seed=seed),  # 0.1 = 10% zoom
+
         # Adjust contrast
-        layers.RandomContrast(0.1),
+        layers.RandomContrast(0.1, seed=seed),  # 0.1 = 10% contrast adjustment
     ])
     return data_augmentation
 
@@ -58,7 +61,7 @@ def apply_augmentation(images, labels, batch_size=32, seed=42):
     dataset = tf.data.Dataset.from_tensor_slices((images, labels))
     
     # Create augmentation pipeline
-    augmentation = create_augmentation_pipeline()
+    augmentation = create_augmentation_pipeline(seed=seed)
     
     # Define the preprocessing function
     def augment(image, label):
