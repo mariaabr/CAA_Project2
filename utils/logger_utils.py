@@ -75,6 +75,12 @@ class ModelLogger:
             elif key == 'confusion_matrix':
                 results_copy[key] = self._convert_to_serializable(value)
             
+            # Parse classification report into structured data
+            elif key == 'classification_report':
+                # Parse the classification report string into a structured dictionary
+                report_dict = self._parse_classification_report(value)
+                results_copy[key] = report_dict
+                
             # Handle numeric types
             elif isinstance(value, (int, float, np.number)):
                 results_copy[key] = float(value)
@@ -94,6 +100,76 @@ class ModelLogger:
         
         # Add evaluation results to current run
         self.current_run["evaluation"] = results_copy
+
+    def _parse_classification_report(self, report_str):
+        """
+        Parse the sklearn classification_report string into a structured dictionary.
+        
+        Args:
+            report_str (str): The classification report string
+            
+        Returns:
+            dict: A structured dictionary of the classification report
+        """
+        # Initialize the result dictionary
+        result = {}
+        
+        # Split the report by lines and remove empty lines
+        lines = [line for line in report_str.split('\n') if line.strip()]
+        
+        # Extract the class metrics
+        class_lines = []
+        for i, line in enumerate(lines):
+            if i == 0:  # Skip the header line
+                continue
+            if 'accuracy' in line:  # This is where class metrics end
+                break
+            class_lines.append(line)
+        
+        # Parse the class metrics
+        classes = {}
+        for line in class_lines:
+            parts = line.split()
+            # Handle class names that have spaces
+            if len(parts) > 5:  # More parts than expected
+                class_name = ' '.join(parts[:-4])
+                metrics = parts[-4:]
+            else:
+                class_name = parts[0]
+                metrics = parts[1:]
+            
+            classes[class_name] = {
+                'precision': float(metrics[0]),
+                'recall': float(metrics[1]),
+                'f1-score': float(metrics[2]),
+                'support': int(metrics[3])
+            }
+        
+        result['classes'] = classes
+        
+        # Parse the average metrics
+        avg_lines = [line for line in lines if 'avg' in line or 'accuracy' in line]
+        averages = {}
+        for line in avg_lines:
+            parts = line.split()
+            if 'accuracy' in line:
+                averages['accuracy'] = {
+                    'value': float(parts[1]),
+                    'support': int(parts[2])
+                }
+            else:
+                avg_type = ' '.join(parts[:-4])
+                metrics = parts[-4:]
+                averages[avg_type] = {
+                    'precision': float(metrics[0]),
+                    'recall': float(metrics[1]),
+                    'f1-score': float(metrics[2]),
+                    'support': int(metrics[3])
+                }
+        
+        result['averages'] = averages
+        
+        return result
     
     def _convert_to_serializable(self, obj):
         """
