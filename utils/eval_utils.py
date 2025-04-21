@@ -1,13 +1,13 @@
 import numpy as np
 from sklearn.metrics import confusion_matrix, classification_report, roc_curve, auc
 
-def evaluate_model(model, test_images, test_labels):
+def evaluate_model(model, test_images, test_labels, verbose=1):
     """Evaluate model and return metrics"""
     # Evaluate the model
-    test_loss, test_accuracy, test_auc = model.evaluate(test_images, test_labels)
+    test_loss, test_accuracy, test_auc = model.evaluate(test_images, test_labels, verbose=verbose)
     
-    # Make predictions
-    predictions = model.predict(test_images)
+    # Make predictions (with no progress bar)
+    predictions = model.predict(test_images, verbose=verbose)
     predicted_classes = np.argmax(predictions, axis=1)
     true_classes = np.argmax(test_labels, axis=1)
     
@@ -35,15 +35,3 @@ def evaluate_model(model, test_images, test_labels):
     }
     
     return results
-
-def compare_models(best_model, selected_model, test_images, test_labels):
-    """Compare two models on the same test data"""
-    results1 = evaluate_model(best_model, test_images, test_labels)
-    results2 = evaluate_model(selected_model, test_images, test_labels)
-    
-    # Compare metrics
-    print("Best Model (in Training) vs Selected Model (through callbacks):")
-    print(f"Test accuracy: {results1['test_accuracy']:.6f} vs {results2['test_accuracy']:.6f}")
-    print(f"Test AUC: {results1['roc']['auc']:.6f} vs {results2['roc']['auc']:.6f}")
-    
-    return results1, results2
