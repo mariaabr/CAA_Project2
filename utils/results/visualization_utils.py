@@ -335,6 +335,101 @@ def plot_efficiency_tradeoff(df, add_regression=True):
         add_regression=add_regression
     )
 
+def plot_hyperparameter_impact(df, group_var, metrics=['test_accuracy', 'test_auc', 'false_negative_rate', 'exec_time'], 
+                            figsize=None, order=None, palette=None, value_format=None):
+    """Plot the impact of a hyperparameter on multiple performance metrics."""
+    # Filter out missing group_var values
+    plot_df = df[df[group_var].notna()].copy()
+    if plot_df.empty:
+        print(f"No data available for {group_var} impact plot.")
+        return None
+
+    # Default palette for augmentation
+    if palette is None and group_var == 'augmented':
+        palette = AUG_IMPACT_PALETTE
+
+    # Compute means with observed=True to silence FutureWarning
+    impact_data = (
+        plot_df
+        .groupby(group_var, observed=True)[metrics]
+        .mean()
+        .reset_index()
+    )
+
+    # Figure size default
+    if figsize is None:
+        figsize = (10, 3 * len(metrics))
+
+    # Ordering
+    if order is None:
+        order = sorted(impact_data[group_var].unique())
+
+    # Value format defaults
+    if value_format is None:
+        value_format = {
+            'test_accuracy': '{:.4f}',
+            'test_auc':      '{:.4f}',
+            'false_negative_rate': '{:.2%}',
+            'exec_time':     '{:.1f}s',
+        }
+
+    # Create subplots
+    fig, axes = plt.subplots(len(metrics), 1, figsize=figsize, sharex=True)
+    if len(metrics) == 1:
+        axes = [axes]
+
+    for ax, metric in zip(axes, metrics):
+        if metric not in impact_data or impact_data[metric].isna().all():
+            ax.text(0.5, 0.5, f"No data for {metric}", ha='center', va='center')
+            continue
+
+        # Unified barplot call with hue to avoid deprecation
+        sns.barplot(
+            x=group_var,
+            y=metric,
+            hue=group_var,
+            data=impact_data,
+            palette=palette,
+            order=order,
+            ax=ax,
+            legend=False
+        )
+
+        # Annotate bars
+        for p in ax.patches:
+            val = p.get_height()
+            if pd.isna(val) or val == 0:
+                continue
+            fmt = value_format.get(metric, '{:.4f}')
+            ax.annotate(
+                fmt.format(val),
+                (p.get_x() + p.get_width() / 2, val),
+                ha='center', va='bottom', fontsize=9
+            )
+
+        # Titles, labels, grid
+        pretty_var    = group_var.replace('_',' ').title()
+        pretty_metric = metric.replace('_',' ').title()
+        ax.set_title(f'Impact of {pretty_var} on {pretty_metric}')
+        ax.set_ylabel(pretty_metric)
+        ax.set_xlabel(pretty_var if ax is axes[-1] else '')
+        ax.grid(axis='y', linestyle='--', alpha=0.7)
+
+        # Percentage format on false negative rate
+        if metric == 'false_negative_rate':
+            ax.yaxis.set_major_formatter(PercentFormatter(1.0))
+        # Fixed tick labels for augmentation
+        if group_var == 'augmented':
+            ax.set_xticks(range(len(order)))
+            ax.set_xticklabels(['No Augmentation', 'With Augmentation'])
+        
+        # Increase y-axis limit for breathing room
+        max_val = impact_data[metric].max()
+        ax.set_ylim(0, max_val * 1.1)
+
+    plt.tight_layout()
+    plt.show()
+
 def plot_aug_impact_by_model(model_df, model_col='model_base_name', augment_col='augmented', metric_col='test_auc', palette=AUG_IMPACT_PALETTE, figsize=(12, 8)):
     """Plot impact of data augmentation on mean metric by model type."""
     # Aggregate mean metric by model type and augmentation status
