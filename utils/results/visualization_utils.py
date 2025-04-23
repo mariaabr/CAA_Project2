@@ -99,7 +99,54 @@ def plot_metric_comparison(df, metric='test_auc', title_metric='AUC', ylim=(0.8,
         ncol=1
     )
     
-    return plt.show()
+    # Create results dataframe with all bar data
+    results = []
+    
+    # Iterate through dropout settings
+    for dropout in DROPOUT_SETTINGS:
+        # Get data for this dropout setting
+        dropout_data = df[df['dropout_setting'] == dropout]
+        
+        # For each model/augmentation combination
+        for model, aug in custom_hue_order:
+            model_aug_data = dropout_data[
+                (dropout_data['model_base_name'] == model) & 
+                (dropout_data['augmented'] == aug)
+            ]
+            
+            # Only include if we have data
+            if not model_aug_data.empty:
+                # Calculate statistics
+                mean_value = model_aug_data[metric].mean()
+                
+                # Calculate 95% confidence interval
+                import scipy.stats as stats
+                n = len(model_aug_data)
+                if n > 1:  # Can only calculate CI with more than one sample
+                    sem = model_aug_data[metric].sem()
+                    ci_95 = stats.t.interval(0.95, n-1, loc=mean_value, scale=sem)
+                    lower_ci, upper_ci = ci_95
+                else:
+                    # If only one sample, use the value itself
+                    lower_ci = upper_ci = mean_value
+                
+                results.append({
+                    'Dropout Strategy': dropout,
+                    'Model': model,
+                    'Augmented': 'Yes' if aug else 'No',
+                    f'Mean {title_metric}': mean_value,
+                    f'Lower CI (95%)': lower_ci,
+                    f'Upper CI (95%)': upper_ci
+                })
+    
+    # Create dataframe from collected results
+    result_df = pd.DataFrame(results)
+    
+    # Display the plot
+    plt.show()
+    
+    # Return the dataframe with the results
+    return result_df
 
 def plot_false_negative_comparison(df):
     """Plot false negative rates comparison across models and augmentation."""
@@ -167,12 +214,12 @@ def plot_execution_time_comparison(df):
     
     # Filter to only include combinations that exist in the data
     custom_hue_order = [combo for combo in custom_hue_order 
-                       if combo in df[['model_base_name', 'augmented']].values]
+                        if combo in df[['model_base_name', 'augmented']].values]
     
     # Group data and create color mapping
     grouped_df = plot_df.groupby(['model_base_name', 'augmented', 'batch_size', 'hue_combined'], observed=True)['exec_time'].mean().reset_index()
     palette = {level: AUGMENTATION_COLOR_MAP.get(level, '#808080') 
-              for level in grouped_df['hue_combined'].cat.categories}
+            for level in grouped_df['hue_combined'].cat.categories}
     
     # Create the catplot with custom ordering
     ax_grid = sns.catplot(
@@ -218,16 +265,16 @@ def plot_execution_time_comparison(df):
     
     # Create custom legend with correct ordering
     handles = [plt.Rectangle((0,0),1,1, color=AUGMENTATION_COLOR_MAP[key]) 
-              for key in custom_hue_order]
+            for key in custom_hue_order]
     labels = [f"{model} ({'Aug' if aug else 'No Aug'})" 
-             for model, aug in custom_hue_order]
+            for model, aug in custom_hue_order]
     
     # Set title and add legend
     ax_grid.figure.suptitle('Mean Execution Time by Batch Size, Model, and Augmentation', y=1.03)
     ax_grid.figure.legend(handles=handles, labels=labels,
-                         title='Model (Augmentation)',
-                         bbox_to_anchor=(1.02, 0.5),
-                         loc='center left')
+                        title='Model (Augmentation)',
+                        bbox_to_anchor=(1.02, 0.5),
+                        loc='center left')
     
     # Adjust layout
     ax_grid.figure.tight_layout(rect=[0, 0, 0.9, 1])
