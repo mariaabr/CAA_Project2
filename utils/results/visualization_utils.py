@@ -3,46 +3,102 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter
+from matplotlib.lines import Line2D
 
 from utils.results.constants import MODELS, BASE_COLORS, AUGMENTATION_COLOR_MAP, AUG_IMPACT_PALETTE, DROPOUT_SETTINGS, DEFAULT_NUMERIC_COLS
 
 def plot_metric_comparison(df, metric='test_auc', title_metric='AUC', ylim=(0.8, 1.01)):
     """General function to plot a performance metric comparison."""
     plt.figure(figsize=(16, 8))
-
+    
+    # Create a custom order for the hue based on the MODELS constant
+    custom_hue_order = []
+    for model in MODELS:  
+        custom_hue_order.append((model, False))  # No Aug
+        custom_hue_order.append((model, True))   # Aug
+    
+    # Filter to only include combinations that exist in the data
+    custom_hue_order = [combo for combo in custom_hue_order 
+                    if combo in df['hue_combined'].unique()]
+    
     # Map the combined hue tuple to the color
-    palette = {level: AUGMENTATION_COLOR_MAP.get(level, '#808080') for level in df['hue_combined'].cat.categories}
-
+    palette = {level: AUGMENTATION_COLOR_MAP.get(level, '#808080') 
+            for level in df['hue_combined'].cat.categories}
+    
     ax = sns.barplot(
         x='dropout_setting',
         y=metric,
-        hue='hue_combined', # Use the combined column for hue
+        hue='hue_combined',  
+        hue_order=custom_hue_order,  
         data=df,
         palette=palette,
-        order=DROPOUT_SETTINGS, # Ensure consistent dropout order
-        errorbar=('ci', 95) # Show confidence interval
+        order=DROPOUT_SETTINGS,  
+        errorbar=('ci', 95)  
     )
-
-    plt.title(f'Test {title_metric} by Dropout Strategy, Model, and Augmentation')
+    
+    plt.title(f'Mean Test {title_metric} by Dropout Strategy, Model, and Augmentation')
     plt.xlabel('Dropout Strategy')
-    plt.ylabel(f'Test {title_metric}')
+    plt.ylabel(f'Mean Test {title_metric}')
+    
     if ylim:
         plt.ylim(ylim)
+        
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     
     # Create custom legend labels
     handles, labels = ax.get_legend_handles_labels()
-    new_labels = [f"{model} ({'Aug' if aug else 'No Aug'})" for model, aug in sorted(palette.keys())]
-
+    new_labels = [f"{model} ({'Aug' if aug else 'No Aug'})" 
+                for model, aug in custom_hue_order]
+    
+    # Identify missing model-dropout combinations
+    all_models = set(model for model, _ in df['hue_combined'].unique())
+    missing_models = {}
+    for dropout in DROPOUT_SETTINGS:
+        dropout_data = df[df['dropout_setting'] == dropout]
+        dropout_models = set(model for model, _ in dropout_data['hue_combined'].unique())
+        missing = all_models - dropout_models
+        if missing:
+            missing_models[dropout] = missing
+    
+    # Add a note if there are missing combinations
+    if missing_models:
+        missing_notes = []
+        for dropout, models in missing_models.items():
+            if models:
+                missing_notes.append(
+                    f"{', '.join(models)} data not available for {dropout}"
+                )
+        
+        bbox = {"facecolor": "orange", "alpha": 0.2, "pad": 5}
+        
+        # Get current axes position
+        ax_pos = ax.get_position()
+        fig = plt.gcf()
+        
+        # Calculate note position relative to axes
+        note_x = ax_pos.x0 + ax_pos.width/2  # Center aligned with plot
+        note_y = ax_pos.y0 - 0.1  # Slightly below plot
+        
+        # Add figure text centered with plot
+        plt.figtext(
+            note_x,
+            note_y,
+            "Note: " + "; ".join(missing_notes),
+            ha="center",
+            fontsize=10,
+            bbox=bbox
+        )
+    
+    # Add legend with adjusted position
     plt.legend(
-        handles=handles, 
+        handles=handles,
         labels=new_labels,
-        title='Model (Augmentation)', 
-        loc='center left', 
+        title='Model (Augmentation)',
+        loc='center left',
         bbox_to_anchor=(1.02, 0.5),
-        ncol=1  # Forces vertical arrangement
+        ncol=1
     )
-    plt.tight_layout(rect=[0, 0, 0.9, 1]) # Adjust layout for legend
+    
     return plt.show()
 
 def plot_false_negative_comparison(df):
@@ -52,36 +108,44 @@ def plot_false_negative_comparison(df):
     if plot_df.empty:
         print("No data available for False Negative Rate plot.")
         return None
-
-    # Define palette based on augmentation status only for this plot
-    aug_palette = {False: '#add8e6', True: '#00008b'} # Light Blue, Dark Blue
-
+    
     ax = sns.barplot(
         x='model_base_name',
         y='false_negative_rate',
         hue='augmented',
         data=plot_df,
         order=MODELS,
-        palette=aug_palette,
+        palette=AUG_IMPACT_PALETTE,
         errorbar=('ci', 95)
     )
-
-    # Add value labels on bars
+    
+    # Add value labels on bars with improved visibility
     for bar in ax.patches:
-        if bar.get_height() > 0: # Avoid labeling zero bars if any
+        if bar.get_height() > 0:  # Avoid labeling zero bars if any
+            text_x = bar.get_x() + bar.get_width() / 2.
+            text_y = bar.get_height()
+            
+            # Create semi-transparent white background behind text
             ax.text(
-                bar.get_x() + bar.get_width() / 2.,
-                bar.get_height(),
+                text_x,
+                text_y,
                 f"{bar.get_height():.2%}",
-                ha='center', va='bottom',
-                fontsize=9
+                ha='center',
+                va='bottom',
+                fontsize=9,
+                bbox=dict(
+                    facecolor='white',
+                    alpha=0.7,  # Semi-transparent background
+                    edgecolor='none'
+                ),
+                zorder=5  # Ensure label appears above error bars
             )
-
-    plt.title('False Negative Rate by Model Type and Data Augmentation')
+    
+    plt.title('Mean False Negative Rate by Model Type and Data Augmentation')
     plt.xlabel('Model Type')
-    plt.ylabel('False Negative Rate (Lower is Better)')
+    plt.ylabel('Mean False Negative Rate (Lower is Better)')
     max_fnr = plot_df['false_negative_rate'].max()
-    plt.ylim(0, max(max_fnr * 1.1, 0.1)) # Ensure ylim starts at 0, reasonable upper bound
+    plt.ylim(0, max(max_fnr * 1.1, 0.05)) 
     plt.gca().yaxis.set_major_formatter(PercentFormatter(1.0))
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     plt.tight_layout()
@@ -93,121 +157,186 @@ def plot_execution_time_comparison(df):
     plot_df = df[df['exec_time'].notna()].copy()
     if plot_df.empty:
         print("No data available for Execution Time plot.")
-        return None # Return None if no data
-
-    # Group by model_type, augmentation, batch_size, and the combined hue
-    grouped_df = plot_df.groupby(['model_base_name', 'augmented', 'batch_size', 'hue_combined'])['exec_time'].mean().reset_index()
-
-    # Map the combined hue tuple to the color
-    palette = {level: AUGMENTATION_COLOR_MAP.get(level, '#808080') for level in grouped_df['hue_combined'].cat.categories}
-
-    ax_grid = sns.catplot( # Use ax_grid to capture the FacetGrid object
+        return None
+    
+    # Create custom hue order based on MODELS constant
+    custom_hue_order = []
+    for model in MODELS:
+        custom_hue_order.append((model, False))  # No Aug
+        custom_hue_order.append((model, True))   # Aug
+    
+    # Filter to only include combinations that exist in the data
+    custom_hue_order = [combo for combo in custom_hue_order 
+                       if combo in df[['model_base_name', 'augmented']].values]
+    
+    # Group data and create color mapping
+    grouped_df = plot_df.groupby(['model_base_name', 'augmented', 'batch_size', 'hue_combined'], observed=True)['exec_time'].mean().reset_index()
+    palette = {level: AUGMENTATION_COLOR_MAP.get(level, '#808080') 
+              for level in grouped_df['hue_combined'].cat.categories}
+    
+    # Create the catplot with custom ordering
+    ax_grid = sns.catplot(
         x='batch_size',
         y='exec_time',
-        hue='hue_combined', # Use multi-index hue
-        col='model_base_name', # Facet by model
+        hue='hue_combined',
+        hue_order=custom_hue_order,
+        col='model_base_name',
         data=grouped_df,
         kind='bar',
         palette=palette,
         col_order=MODELS,
-        col_wrap=2, # Wrap into 2 columns
-        height=5, aspect=1.2,
-        legend=False # Turn off default legend
+        col_wrap=2,
+        height=5,
+        aspect=1.2,
+        legend=False
     )
-
-    # Add value labels (adjust coordinates for catplot)
-    for ax in ax_grid.axes.flat: # Iterate through axes in the grid
+    
+    # Set custom titles with just the model name
+    ax_grid.set_titles("Mean Execution Time by Batch Size for {col_name} Model")
+    
+    # Add value labels with background
+    for ax in ax_grid.axes.flat:
         for bar in ax.patches:
-            ax.text(
-                bar.get_x() + bar.get_width() / 2.,
-                bar.get_height(),
-                f"{int(bar.get_height())}s",
-                ha='center', va='bottom',
-                fontsize=9
-            )
+            if bar.get_height() > 0:
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2.,
+                    bar.get_height(),
+                    f"{int(bar.get_height())}s",
+                    ha='center',
+                    va='bottom',
+                    fontsize=9,
+                    bbox=dict(
+                        facecolor='white',
+                        alpha=0.7,
+                        edgecolor='none'
+                    ),
+                    zorder=5
+                )
         ax.grid(axis='y', linestyle='--', alpha=0.7)
-        ax.set_ylabel('Mean Execution Time (s)') # Set y-label per subplot
-        ax.set_xlabel('Batch Size') # Set x-label per subplot
-
+        ax.set_ylabel('Mean Execution Time (s)')
+        ax.set_xlabel('Batch Size')
+    
+    # Create custom legend with correct ordering
+    handles = [plt.Rectangle((0,0),1,1, color=AUGMENTATION_COLOR_MAP[key]) 
+              for key in custom_hue_order]
+    labels = [f"{model} ({'Aug' if aug else 'No Aug'})" 
+             for model, aug in custom_hue_order]
+    
+    # Set title and add legend
     ax_grid.figure.suptitle('Mean Execution Time by Batch Size, Model, and Augmentation', y=1.03)
-
-    # Create a custom legend
-    handles = [plt.Rectangle((0,0),1,1, color=AUGMENTATION_COLOR_MAP[key]) for key in sorted(palette.keys())]
-    labels = [f"{model} ({'Aug' if aug else 'No Aug'})" for model, aug in sorted(palette.keys())]
-    ax_grid.figure.legend(handles=handles, labels=labels, title='Model (Augmentation)', bbox_to_anchor=(1.02, 0.5), loc='center left')
-    ax_grid.figure.tight_layout(rect=[0, 0, 0.9, 1]) # Adjust layout for legend
-
-    # Return the figure of the catplot
-    return ax_grid.figure
-
-def plot_precision_recall_tradeoff(df):
-    """Create precision vs recall scatter plot using the new color scheme."""
-    plt.figure(figsize=(13, 9))
-    plot_df = df[(df['precision_pneumonia'].notna()) & (df['recall_pneumonia'].notna())].copy()
-    if plot_df.empty:
-        print("No data available for Precision-Recall plot.")
-        return None
-
-    # Use hue for model, style for augmentation
-    ax = sns.scatterplot(
-        data=plot_df,
-        x='recall_pneumonia',
-        y='precision_pneumonia',
-        hue='model_base_name',
-        style='augmented', # Use boolean directly for style
-        palette=BASE_COLORS, # Use base colors for hue
-        s=100, # Marker size
-        alpha=0.8,
-        hue_order=MODELS
-    )
-
-    plt.title('Precision vs. Recall Trade-off (Pneumonia Class)')
-    plt.xlabel('Recall (Sensitivity)')
-    plt.ylabel('Precision')
-    plt.xlim(max(0, plot_df['recall_pneumonia'].min() - 0.05), 1.01) # Adjust xlim based on data
-    plt.ylim(max(0, plot_df['precision_pneumonia'].min() - 0.05), 1.01) # Adjust ylim based on data
-    plt.grid(True, alpha=0.4)
-    plt.legend(title='Model (Style: Augmented)', bbox_to_anchor=(1.02, 1), loc='upper left')
-    plt.tight_layout(rect=[0, 0, 0.88, 1]) # Adjust layout
+    ax_grid.figure.legend(handles=handles, labels=labels,
+                         title='Model (Augmentation)',
+                         bbox_to_anchor=(1.02, 0.5),
+                         loc='center left')
+    
+    # Adjust layout
+    ax_grid.figure.tight_layout(rect=[0, 0, 0.9, 1])
+    
     return plt.show()
 
-def plot_efficiency_tradeoff(df):
-    """Plot efficiency tradeoff (AUC vs. Time) using the new color scheme."""
-    plt.figure(figsize=(13, 9))
-    plot_df = df[(df['exec_time'].notna()) & (df['test_auc'].notna())].copy()
+def plot_model_performance(df, x_metric, y_metric, title=None, x_label=None, y_label=None, add_regression=True):
+    """Generalized plotting function for model performance with customizable metrics."""
+    # Prepare figure + data
+    fig, ax = plt.subplots(figsize=(13, 9))
+    plot_df = df[df[x_metric].notna() & df[y_metric].notna()].copy()
     if plot_df.empty:
-        print("No data available for Efficiency Tradeoff plot.")
-        return None
+        print(f"No data available for {x_metric} vs {y_metric} plot.")
+        return
+    
+    # Define markers: X for non-augmented, ✓ (checkmark) for augmented
+    markers = {False: 'X', True: 'o'} 
 
-    # Use hue for model, style for augmentation
-    ax = sns.scatterplot(
+    # Build the Scatter Plot
+    sns.scatterplot(
         data=plot_df,
-        x='exec_time',
-        y='test_auc',
+        x=x_metric,
+        y=y_metric,
         hue='model_base_name',
-        style='augmented', # Use boolean directly for style
-        palette=BASE_COLORS, # Use base colors for hue
-        s=100, # Marker size
+        style='augmented',
+        markers=markers,
+        palette=BASE_COLORS,
+        s=100,
         alpha=0.8,
-        hue_order=MODELS
+        hue_order=MODELS,
+        ax=ax
     )
 
-    plt.title('Efficiency Tradeoff: Test AUC vs. Execution Time')
-    plt.xlabel('Execution Time (seconds)')
-    plt.ylabel('Test AUC')
-    plt.ylim(max(0.5, plot_df['test_auc'].min() - 0.02), 1.01) # Reasonable AUC range
-    plt.grid(True, alpha=0.4)
-    plt.legend(title='Model (Style: Augmented)', bbox_to_anchor=(1.02, 1), loc='upper left')
-    plt.tight_layout(rect=[0, 0, 0.88, 1]) # Adjust layout
+    # Make Regression lines (if requested)
+    if add_regression:
+        for model in plot_df['model_base_name'].unique():
+            md = plot_df[plot_df['model_base_name'] == model]
+            if len(md) > 1:
+                sns.regplot(
+                    x=x_metric,
+                    y=y_metric,
+                    data=md,
+                    scatter=False,
+                    ci=None,
+                    line_kws={'alpha': 0.5, 'linestyle': '--'},
+                    color=BASE_COLORS.get(model, 'gray'),
+                    ax=ax
+                )
+
+    # Create Labels & set limits
+    ax.set_title(title or f'{y_metric} vs. {x_metric}')
+    ax.set_xlabel(x_label or x_metric.replace('_', ' ').title())
+    ax.set_ylabel(y_label or y_metric.replace('_', ' ').title())
+    if y_metric in ['test_auc', 'precision_pneumonia', 'recall_pneumonia']:
+        ymin = max(0.5, plot_df[y_metric].min() - 0.02)
+        ax.set_ylim(ymin, 1.01)
+    ax.grid(True, alpha=0.4)
+
+    # Build one legend merging model color + aug marker
+    handles = []
+    for model in MODELS:
+        for aug in [False, True]:
+            subset = plot_df[(plot_df['model_base_name'] == model) & (plot_df['augmented'] == aug)]
+            if subset.empty:
+                continue
+            handles.append(
+                Line2D([0], [0],
+                    marker=markers[aug],
+                    color=BASE_COLORS.get(model, 'gray'),
+                    label=f"{model}{' (Aug)' if aug else ''}",
+                    markersize=10,
+                    linestyle='None')
+            )
+
+    # Place merged legend outside
+    plt.subplots_adjust(right=0.75)
+    ax.legend(handles=handles,
+            title="Model (Style: Augmented)",
+            loc="upper left",
+            bbox_to_anchor=(1.02, 1))
+    
     return plt.show()
 
-def plot_aug_impact_by_model(
-    model_df, model_col='model_base_name', augment_col='augmented',
-    metric_col='test_auc', palette=AUG_IMPACT_PALETTE, figsize=(12, 8)
-):
-    """
-    Plot impact of data augmentation on mean metric by model type.
-    """
+def plot_precision_recall_tradeoff(df, add_regression=True):
+    """Precision vs. Recall Trade-off (Pneumonia Class)."""
+    return plot_model_performance(
+        df=df,
+        x_metric='recall_pneumonia',
+        y_metric='precision_pneumonia',
+        title='Precision vs. Recall Trade-off (Pneumonia Class)',
+        x_label='Recall (Sensitivity)',
+        y_label='Precision',
+        add_regression=add_regression
+    )
+
+def plot_efficiency_tradeoff(df, add_regression=True):
+    """Efficiency Trade-off: Test AUC vs. Execution Time."""
+    return plot_model_performance(
+        df=df,
+        x_metric='exec_time',
+        y_metric='test_auc',
+        title='Efficiency Trade-off: Test AUC vs. Execution Time',
+        x_label='Execution Time (seconds)',
+        y_label='Test AUC',
+        add_regression=add_regression
+    )
+
+def plot_aug_impact_by_model(model_df, model_col='model_base_name', augment_col='augmented', metric_col='test_auc', palette=AUG_IMPACT_PALETTE, figsize=(12, 8)):
+    """Plot impact of data augmentation on mean metric by model type."""
     # Aggregate mean metric by model type and augmentation status
     aug_by_model = (
         model_df
@@ -245,12 +374,8 @@ def plot_aug_impact_by_model(
 
     return plt.show()
 
-def plot_correlation_matrix(
-    model_df, cols=DEFAULT_NUMERIC_COLS, figsize=(10, 8), cmap="coolwarm"
-):
-    """
-    Calculate and plot correlation matrix for given numeric columns in model_df.
-    """
+def plot_correlation_matrix(model_df, cols=DEFAULT_NUMERIC_COLS, figsize=(10, 8), cmap="coolwarm"):
+    """Calculate and plot correlation matrix for given numeric columns in model_df."""
     # Determine which columns to use
     cols_to_use = [col for col in cols if col in model_df.columns]
 
@@ -266,6 +391,9 @@ def plot_correlation_matrix(
     # Compute correlation matrix
     corr_matrix = corr_df.corr()
 
+    cmap = sns.color_palette(cmap, as_cmap=True)
+    cmap.set_bad(color='lightgray', alpha=0.25)  # Set color for NaN values
+
     # Plot heatmap
     plt.figure(figsize=figsize)
     mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
@@ -278,7 +406,9 @@ def plot_correlation_matrix(
         center=0,
         square=True,
         linewidths=.5,
-        cbar_kws={"shrink": .5}
+        cbar_kws={"shrink": .5},
+        vmin=-1,
+        vmax=1,
     )
     ax.set_title('Correlation Matrix of Performance Metrics and Hyperparameters')
     plt.xticks(rotation=45, ha='right')

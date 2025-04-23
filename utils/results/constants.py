@@ -17,10 +17,10 @@ DEFAULT_NUMERIC_COLS = [
 
 # Define base colors for models
 BASE_COLORS = {
-    'alexnet': '#e41a1c',     # Red
-    'resnet_18': '#377eb8',   # Blue
-    'resnet_50': '#4daf4a',   # Green
-    'densenet_169': '#ff7f00' # Orange
+    'alexnet': 'forestgreen',    # Medium green - not too dark
+    'resnet_18': 'darkorchid',   # Purple with warmth
+    'resnet_50': 'tomato',       # Warm orange-red (not pure red)
+    'densenet_169': 'goldenrod'  # Gold/amber color - warm without being too yellow
 }
 
 # Default palette for augmentation plot
