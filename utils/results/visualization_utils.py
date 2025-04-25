@@ -219,7 +219,55 @@ def plot_false_negative_comparison(df):
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     plt.tight_layout()
     plt.legend(title='Augmented')
-    return plt.show()
+    
+    # Create results dataframe with mean and extreme values
+    results = []
+    
+    # For each model/augmentation combination
+    for model in MODELS:
+        for aug in [False, True]:
+            model_aug_data = plot_df[
+                (plot_df['model_base_name'] == model) & 
+                (plot_df['augmented'] == aug)
+            ]
+            
+            # Only include if we have data
+            if not model_aug_data.empty:
+                # Calculate statistics
+                mean_value = model_aug_data['false_negative_rate'].mean()
+                min_value = model_aug_data['false_negative_rate'].min()  # Best case (lowest FNR)
+                max_value = model_aug_data['false_negative_rate'].max()  # Worst case (highest FNR)
+                
+                # Calculate 95% confidence interval
+                import scipy.stats as stats
+                n = len(model_aug_data)
+                if n > 1:  # Can only calculate CI with more than one sample
+                    sem = model_aug_data['false_negative_rate'].sem()
+                    ci_95 = stats.t.interval(0.95, n-1, loc=mean_value, scale=sem)
+                    lower_ci, upper_ci = ci_95
+                else:
+                    # If only one sample, use the value itself
+                    lower_ci = upper_ci = mean_value
+                
+                results.append({
+                    'Model': model,
+                    'Augmented': 'Yes' if aug else 'No',
+                    'Mean False Negative Rate': mean_value,
+                    'Best Case (Min FNR)': min_value,
+                    'Worst Case (Max FNR)': max_value,
+                    'Lower CI (95%)': lower_ci,
+                    'Upper CI (95%)': upper_ci,
+                    'Sample Size': n
+                })
+    
+    # Create dataframe from collected results
+    result_df = pd.DataFrame(results)
+    
+    # Display the plot
+    plt.show()
+    
+    # Return the dataframe with the results
+    return result_df
 
 def plot_execution_time_comparison(df):
     """Plot execution time comparison across models and batch sizes."""
@@ -277,8 +325,8 @@ def plot_execution_time_comparison(df):
         for model, augmented in custom_hue_order:
             for batch_size in plot_df['batch_size'].unique():
                 subset = plot_df[(plot_df['model_base_name'] == model) & 
-                              (plot_df['augmented'] == augmented) &
-                              (plot_df['batch_size'] == batch_size)]
+                                (plot_df['augmented'] == augmented) &
+                                (plot_df['batch_size'] == batch_size)]
                 if not subset.empty:
                     key = (model, augmented, batch_size)
                     means[key] = subset['exec_time'].mean()
@@ -319,7 +367,56 @@ def plot_execution_time_comparison(df):
     # Adjust layout
     ax_grid.figure.tight_layout(rect=[0, 0, 0.9, 1])
     
-    return plt.show()
+    # Create results dataframe with all data combinations
+    results = []
+    
+    # For each model/augmentation/batch_size combination
+    for model in MODELS:
+        for aug in [False, True]:
+            for batch_size in plot_df['batch_size'].unique():
+                subset = plot_df[
+                    (plot_df['model_base_name'] == model) & 
+                    (plot_df['augmented'] == aug) &
+                    (plot_df['batch_size'] == batch_size)
+                ]
+                
+                # Only include if we have data
+                if not subset.empty:
+                    # Calculate statistics
+                    mean_value = subset['exec_time'].mean()
+                    min_value = subset['exec_time'].min()  # Best case (fastest time)
+                    max_value = subset['exec_time'].max()  # Worst case (slowest time)
+                    
+                    # Calculate 95% confidence interval
+                    import scipy.stats as stats
+                    n = len(subset)
+                    if n > 1:  # Can only calculate CI with more than one sample
+                        sem = subset['exec_time'].sem()
+                        ci_95 = stats.t.interval(0.95, n-1, loc=mean_value, scale=sem)
+                        lower_ci, upper_ci = ci_95
+                    else:
+                        # If only one sample, use the value itself
+                        lower_ci = upper_ci = mean_value
+                    
+                    results.append({
+                        'Model': model,
+                        'Augmented': 'Yes' if aug else 'No',
+                        'Batch Size': batch_size,
+                        'Mean Execution Time (s)': mean_value,
+                        'Best Case (Min Time)': min_value,
+                        'Worst Case (Max Time)': max_value,
+                        'Lower CI (95%)': lower_ci,
+                        'Upper CI (95%)': upper_ci,
+                        'Sample Size': n
+                    })
+    
+    # Create dataframe from collected results
+    result_df = pd.DataFrame(results)
+
+    # Display the plot
+    plt.show()
+    
+    return result_df
 
 def plot_model_performance(df, x_metric, y_metric, title=None, x_label=None, y_label=None, add_regression=True):
     """Generalized plotting function for model performance with customizable metrics."""
