@@ -35,6 +35,28 @@ def plot_metric_comparison(df, metric='test_auc', title_metric='AUC', ylim=(0.8,
         order=DROPOUT_SETTINGS,  
         errorbar=('ci', 95)  
     )
+
+    # Add value labels on bars
+    for bar in ax.patches:
+        if bar.get_height() > 0:  # Avoid labeling zero bars if any
+            text_x = bar.get_x() + bar.get_width() / 2.
+            text_y = bar.get_height()
+            
+            # Create semi-transparent white background behind text
+            ax.text(
+                text_x,
+                text_y,
+                f"{bar.get_height():.2f}",
+                ha='center',
+                va='bottom',
+                fontsize=9,
+                bbox=dict(
+                    facecolor='white',
+                    alpha=0.7,  # Semi-transparent background
+                    edgecolor='none'
+                ),
+                zorder=5  # Ensure label appears above error bars
+            )
     
     plt.title(f'Mean Test {title_metric} by Dropout Strategy, Model, and Augmentation')
     plt.xlabel('Dropout Strategy')
@@ -216,33 +238,51 @@ def plot_execution_time_comparison(df):
     custom_hue_order = [combo for combo in custom_hue_order 
                         if combo in df[['model_base_name', 'augmented']].values]
     
-    # Group data and create color mapping
-    grouped_df = plot_df.groupby(['model_base_name', 'augmented', 'batch_size', 'hue_combined'], observed=True)['exec_time'].mean().reset_index()
+    # Create color mapping
     palette = {level: AUGMENTATION_COLOR_MAP.get(level, '#808080') 
-            for level in grouped_df['hue_combined'].cat.categories}
+            for level in plot_df['hue_combined'].cat.categories}
     
-    # Create the catplot with custom ordering
+    # Create the catplot with custom ordering - use the full dataset, not grouped
     ax_grid = sns.catplot(
         x='batch_size',
         y='exec_time',
         hue='hue_combined',
         hue_order=custom_hue_order,
         col='model_base_name',
-        data=grouped_df,
+        data=plot_df,  # Use the original data, not grouped
         kind='bar',
         palette=palette,
         col_order=MODELS,
         col_wrap=2,
         height=5,
         aspect=1.2,
-        legend=False
+        legend=False,
+        errorbar=('ci', 95),  # This will work with original data
+        dodge=True,  # Ensure bars are side by side
     )
+    
+    # To make bars wider or spaced better
+    for ax in ax_grid.axes.flat:
+        # Adjust width and position of bars
+        for i, bar in enumerate(ax.patches):
+            bar.set_width(bar.get_width() * 0.8)  # Make bars slightly narrower
     
     # Set custom titles with just the model name
     ax_grid.set_titles("Mean Execution Time by Batch Size for {col_name} Model")
     
     # Add value labels with background
     for ax in ax_grid.axes.flat:
+        # Get mean values for labels
+        means = {}
+        for model, augmented in custom_hue_order:
+            for batch_size in plot_df['batch_size'].unique():
+                subset = plot_df[(plot_df['model_base_name'] == model) & 
+                              (plot_df['augmented'] == augmented) &
+                              (plot_df['batch_size'] == batch_size)]
+                if not subset.empty:
+                    key = (model, augmented, batch_size)
+                    means[key] = subset['exec_time'].mean()
+        
         for bar in ax.patches:
             if bar.get_height() > 0:
                 ax.text(
@@ -451,7 +491,15 @@ def plot_hyperparameter_impact(df, group_var, metrics=['test_accuracy', 'test_au
             ax.annotate(
                 fmt.format(val),
                 (p.get_x() + p.get_width() / 2, val),
-                ha='center', va='bottom', fontsize=9
+                ha='center', 
+                va='bottom', 
+                fontsize=9,
+                bbox=dict(
+                    facecolor='white',
+                    alpha=0.7,
+                    edgecolor='none'
+                ),
+                zorder=5
             )
 
         # Titles, labels, grid
@@ -502,7 +550,15 @@ def plot_aug_impact_by_model(model_df, model_col='model_base_name', augment_col=
         ax.annotate(
             f"{bar.get_height():.3f}",
             (bar.get_x() + bar.get_width() / 2., bar.get_height()),
-            ha='center', va='bottom', fontsize=9
+            ha='center', 
+            va='bottom', 
+            fontsize=9,
+            bbox=dict(
+                facecolor='white',
+                alpha=0.7,
+                edgecolor='none'
+            ),
+            zorder=5
         )
 
     # Labels and layout
