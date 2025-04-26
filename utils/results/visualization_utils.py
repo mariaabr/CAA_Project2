@@ -133,7 +133,7 @@ def plot_metric_comparison(df, metric='test_auc', title_metric='AUC', ylim=(0.8,
         for model, aug in custom_hue_order:
             model_aug_data = dropout_data[
                 (dropout_data['model_base_name'] == model) & 
-                (dropout_data['augmented'] == aug)
+                (dropout_data['augmentation'] == aug)
             ]
             
             # Only include if we have data
@@ -181,7 +181,7 @@ def plot_false_negative_comparison(df):
     ax = sns.barplot(
         x='model_base_name',
         y='false_negative_rate',
-        hue='augmented',
+        hue='augmentation',
         data=plot_df,
         order=MODELS,
         palette=AUG_IMPACT_PALETTE,
@@ -218,7 +218,7 @@ def plot_false_negative_comparison(df):
     plt.gca().yaxis.set_major_formatter(PercentFormatter(1.0))
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     plt.tight_layout()
-    plt.legend(title='Augmented')
+    plt.legend(title='Augmentation')
     
     # Create results dataframe with mean and extreme values
     results = []
@@ -228,7 +228,7 @@ def plot_false_negative_comparison(df):
         for aug in [False, True]:
             model_aug_data = plot_df[
                 (plot_df['model_base_name'] == model) & 
-                (plot_df['augmented'] == aug)
+                (plot_df['augmentation'] == aug)
             ]
             
             # Only include if we have data
@@ -284,7 +284,7 @@ def plot_execution_time_comparison(df):
     
     # Filter to only include combinations that exist in the data
     custom_hue_order = [combo for combo in custom_hue_order 
-                        if combo in df[['model_base_name', 'augmented']].values]
+                        if combo in df[['model_base_name', 'augmentation']].values]
     
     # Create color mapping
     palette = {level: AUGMENTATION_COLOR_MAP.get(level, '#808080') 
@@ -325,7 +325,7 @@ def plot_execution_time_comparison(df):
         for model, augmented in custom_hue_order:
             for batch_size in plot_df['batch_size'].unique():
                 subset = plot_df[(plot_df['model_base_name'] == model) & 
-                                (plot_df['augmented'] == augmented) &
+                                (plot_df['augmentation'] == augmented) &
                                 (plot_df['batch_size'] == batch_size)]
                 if not subset.empty:
                     key = (model, augmented, batch_size)
@@ -376,7 +376,7 @@ def plot_execution_time_comparison(df):
             for batch_size in plot_df['batch_size'].unique():
                 subset = plot_df[
                     (plot_df['model_base_name'] == model) & 
-                    (plot_df['augmented'] == aug) &
+                    (plot_df['augmentation'] == aug) &
                     (plot_df['batch_size'] == batch_size)
                 ]
                 
@@ -427,7 +427,7 @@ def plot_model_performance(df, x_metric, y_metric, title=None, x_label=None, y_l
         print(f"No data available for {x_metric} vs {y_metric} plot.")
         return
     
-    # Define markers: X for non-augmented, ✓ (checkmark) for augmented
+    # Define markers for augmented vs non-augmented
     markers = {False: 'X', True: 'o'} 
 
     # Build the Scatter Plot
@@ -436,11 +436,11 @@ def plot_model_performance(df, x_metric, y_metric, title=None, x_label=None, y_l
         x=x_metric,
         y=y_metric,
         hue='model_base_name',
-        style='augmented',
+        style='augmentation',
         markers=markers,
         palette=BASE_COLORS,
         s=100,
-        alpha=0.8,
+        alpha=0.7,
         hue_order=MODELS,
         ax=ax
     )
@@ -474,7 +474,7 @@ def plot_model_performance(df, x_metric, y_metric, title=None, x_label=None, y_l
     handles = []
     for model in MODELS:
         for aug in [False, True]:
-            subset = plot_df[(plot_df['model_base_name'] == model) & (plot_df['augmented'] == aug)]
+            subset = plot_df[(plot_df['model_base_name'] == model) & (plot_df['augmentation'] == aug)]
             if subset.empty:
                 continue
             handles.append(
@@ -529,7 +529,7 @@ def plot_hyperparameter_impact(df, group_var, metrics=['test_accuracy', 'test_au
         return None
 
     # Default palette for augmentation
-    if palette is None and group_var == 'augmented':
+    if palette is None and group_var == 'augmentation':
         palette = AUG_IMPACT_PALETTE
 
     # Compute means with observed=True to silence FutureWarning
@@ -611,7 +611,7 @@ def plot_hyperparameter_impact(df, group_var, metrics=['test_accuracy', 'test_au
         if metric == 'false_negative_rate':
             ax.yaxis.set_major_formatter(PercentFormatter(1.0))
         # Fixed tick labels for augmentation
-        if group_var == 'augmented':
+        if group_var == 'augmentation':
             ax.set_xticks(range(len(order)))
             ax.set_xticklabels(['No Augmentation', 'With Augmentation'])
         
@@ -622,7 +622,7 @@ def plot_hyperparameter_impact(df, group_var, metrics=['test_accuracy', 'test_au
     plt.tight_layout()
     plt.show()
 
-def plot_aug_impact_by_model(model_df, model_col='model_base_name', augment_col='augmented', metric_col='test_auc', palette=AUG_IMPACT_PALETTE, figsize=(12, 8)):
+def plot_aug_impact_by_model(model_df, model_col='model_base_name', augment_col='augmentation', metric_col='test_auc', palette=AUG_IMPACT_PALETTE, figsize=(12, 8)):
     """Plot impact of data augmentation on mean metric by model type."""
     # Aggregate mean metric by model type and augmentation status
     aug_by_model = (
@@ -719,7 +719,7 @@ def create_best_models_table(df, top_n=10, sort_by='test_auc'):
         return pd.DataFrame()
 
     # Select and copy relevant columns
-    cols = ['model_base_name', 'augmented', 'batch_size', 'dropout_setting',
+    cols = ['model_base_name', 'augmentation', 'batch_size', 'dropout_setting',
             'test_accuracy', 'test_auc', 'precision_pneumonia', 'recall_pneumonia',
             'f1_pneumonia', 'false_negative_rate', 'exec_time', 'fn'] # Added F1 and raw FN count
     table_df = df[cols].dropna(subset=[sort_by]).copy()

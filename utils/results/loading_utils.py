@@ -96,13 +96,13 @@ def extract_run_data(filename, model_base_name, is_augmented_from_filename, run)
     # Get augmentation status
     run_augmented = run.get('augmentation', is_augmented_from_filename)
     if isinstance(run_augmented, str):
-        run_augmented = run_augmented.lower() == 'true' or run_augmented == 'augmented'
+        run_augmented = run_augmented.lower() == 'true' or run_augmented == 'augmentation'
     
     # Create basic info dictionary
     run_info = {
         'filename': filename,
         'model_base_name': model_base_name,
-        'augmented': bool(run_augmented),
+        'augmentation': bool(run_augmented),
         'timestamp': run.get('timestamp'),
         'batch_size': run.get('batch_size'),
         'learning_rate': run.get('learning_rate'),
@@ -111,7 +111,7 @@ def extract_run_data(filename, model_base_name, is_augmented_from_filename, run)
     }
     
     # Add combined hue column for plotting
-    run_info['hue_combined'] = (run_info['model_base_name'], run_info['augmented'])
+    run_info['hue_combined'] = (run_info['model_base_name'], run_info['augmentation'])
     
     # Add dropout information
     add_dropout_info(run_info, run)
@@ -231,7 +231,7 @@ def finalize_dataframe(all_data):
         )
     
     # Sort for consistency
-    sort_columns = [col for col in ['model_base_name', 'augmented', 'batch_size', 'dropout_setting'] 
+    sort_columns = [col for col in ['model_base_name', 'augmentation', 'batch_size', 'dropout_setting'] 
                 if col in df.columns]
     if sort_columns:
         df = df.sort_values(sort_columns)
