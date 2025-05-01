@@ -163,7 +163,28 @@ def add_evaluation_metrics(run_info, run):
                 'tn': tn, 'fp': fp, 'fn': fn, 'tp': tp
             })
             
-            # Extract metrics from classification report if available
+            # Calculate metrics directly from confusion matrix
+            # True positives + False negatives = Total actual positives
+            total_actual_pos = tp + fn
+            
+            # True negatives + False positives = Total actual negatives
+            total_actual_neg = tn + fp
+            
+            # Calculate rates directly from confusion matrix
+            if total_actual_pos > 0:
+                run_info['true_positive_rate'] = tp / total_actual_pos  # TPR = Recall = Sensitivity
+                run_info['false_negative_rate'] = fn / total_actual_pos  # FNR = 1 - TPR
+            
+            if total_actual_neg > 0:
+                run_info['true_negative_rate'] = tn / total_actual_neg  # TNR = Specificity
+                run_info['false_positive_rate'] = fp / total_actual_neg  # FPR = 1 - TNR
+            
+            # Calculate precision if possible
+            predicted_pos = tp + fp
+            if predicted_pos > 0:
+                run_info['precision'] = tp / predicted_pos
+            
+            # Extract metrics from classification report if available for comparison
             class_report = eval_data.get('classification_report', {})
             classes = class_report.get('classes', {})
             
@@ -173,15 +194,6 @@ def add_evaluation_metrics(run_info, run):
             run_info['recall_pneumonia'] = pneumonia_class.get('recall')
             run_info['f1_pneumonia'] = pneumonia_class.get('f1-score')
             
-            # Calculate FNR if not in report (only if we have fn and tp)
-            if 'recall_pneumonia' in run_info and run_info['recall_pneumonia'] is not None:
-                # FNR = 1 - recall (TPR)
-                run_info['false_negative_rate'] = 1 - run_info['recall_pneumonia']
-            else:
-                # Calculate manually if we have the values
-                total_pos_actual = fn + tp
-                run_info['false_negative_rate'] = fn / total_pos_actual if total_pos_actual > 0 else None
-                
         except (TypeError, ValueError) as e:
             print(f"Warning: Error processing confusion matrix in {run_info['filename']}: {cm}. Error: {e}")
 
@@ -205,8 +217,11 @@ def finalize_dataframe(all_data):
     numeric_cols = [
         'batch_size', 'learning_rate', 'dropout_rate', 'dropout_start', 'dropout_end',
         'exec_time', 'test_accuracy', 'test_auc', 'test_loss',
-        'tn', 'fp', 'fn', 'tp', 'precision_pneumonia', 'recall_pneumonia',
-        'f1_pneumonia', 'false_negative_rate'
+        'tn', 'fp', 'fn', 'tp', 
+        'precision', 'precision_pneumonia', 
+        'true_positive_rate', 'false_negative_rate',
+        'true_negative_rate', 'false_positive_rate',
+        'recall_pneumonia', 'f1_pneumonia'
     ]
     numeric_cols.extend([f'final_{metric}' for metric in ['val_loss', 'val_accuracy', 'val_AUC']])
     
@@ -240,12 +255,10 @@ def finalize_dataframe(all_data):
     print(f"Data extraction complete. {len(df)} runs processed.")
     
     # Check for missing crucial data
-    missing_auc = df['test_auc'].isnull().sum() if 'test_auc' in df.columns else 0
-    if missing_auc > 0:
-        print(f"Warning: {missing_auc} runs have missing 'test_auc' values.")
-        
-    missing_fnr = df['false_negative_rate'].isnull().sum() if 'false_negative_rate' in df.columns else 0
-    if missing_fnr > 0:
-        print(f"Warning: {missing_fnr} runs have missing 'false_negative_rate' values.")
+    for critical_metric in ['test_auc', 'false_negative_rate', 'false_positive_rate']:
+        if critical_metric in df.columns:
+            missing = df[critical_metric].isnull().sum()
+            if missing > 0:
+                print(f"Warning: {missing} runs have missing '{critical_metric}' values.")
 
     return df

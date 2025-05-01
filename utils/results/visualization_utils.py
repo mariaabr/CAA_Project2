@@ -712,37 +712,127 @@ def plot_correlation_matrix(model_df, cols=DEFAULT_NUMERIC_COLS, figsize=(10, 8)
 
     return plt.show()
 
-def create_best_models_table(df, top_n=10, sort_by='test_auc'):
-    """Create a formatted table of the best performing models."""
-    if df.empty or sort_by not in df.columns:
-        print(f"Cannot create table. DataFrame is empty or missing sort column '{sort_by}'.")
+def create_best_models_table(df, top_n=10, sort_by=None):
+    """
+    Create a formatted table of the best performing models with multi-metric sorting.
+    
+    Args:
+        df (pd.DataFrame): DataFrame containing model data
+        top_n (int): Number of top models to display
+        sort_by (list or str): List of columns to sort by, with each item being either:
+                            - A string column name (will use ascending=False by default)
+                            - A tuple of (column_name, ascending_bool)
+                            If a string is provided, it will be converted to a single-item list
+    
+    Returns:
+        pd.DataFrame: Formatted table of top models
+    """
+    if df.empty:
+        print("Cannot create table. DataFrame is empty.")
         return pd.DataFrame()
-
+    
+    # Handle sort_by parameter
+    if sort_by is None:
+        sort_by = [('test_auc', False)]  # Default sort by test_auc descending
+    elif isinstance(sort_by, str):
+        # For single column string, convert to list with default ascending=False
+        # Special case: false_negative_rate should be ascending=True (lower is better)
+        ascending = True if sort_by == 'false_negative_rate' else False
+        sort_by = [(sort_by, ascending)]
+    elif isinstance(sort_by, list):
+        # Process each item in the list
+        processed_sort_by = []
+        for item in sort_by:
+            if isinstance(item, str):
+                # If string, use default ascending value based on metric name
+                ascending = True if item == 'false_negative_rate' else False
+                processed_sort_by.append((item, ascending))
+            elif isinstance(item, tuple) and len(item) == 2:
+                # If tuple with column and ascending boolean, use as is
+                processed_sort_by.append(item)
+            else:
+                print(f"Warning: Invalid sort specification {item}. Skipping.")
+        sort_by = processed_sort_by
+    
+    # Check if all sort columns exist
+    sort_columns = [col for col, _ in sort_by]
+    missing_cols = [col for col in sort_columns if col not in df.columns]
+    if missing_cols:
+        print(f"Warning: Sort columns {missing_cols} not found in DataFrame. Using available columns only.")
+        sort_by = [(col, asc) for col, asc in sort_by if col in df.columns]
+        if not sort_by:
+            print("No valid sort columns. Using default sort by test_auc.")
+            sort_by = [('test_auc', False)]
+    
     # Select and copy relevant columns
     cols = ['model_base_name', 'augmentation', 'batch_size', 'dropout_setting',
             'test_accuracy', 'test_auc', 'precision_pneumonia', 'recall_pneumonia',
-            'f1_pneumonia', 'false_negative_rate', 'exec_time', 'fn'] # Added F1 and raw FN count
-    table_df = df[cols].dropna(subset=[sort_by]).copy()
-
-    # Sort
-    table_df = table_df.sort_values(sort_by, ascending=False if sort_by != 'false_negative_rate' else True) # Lower FNR is better
-
+            'f1_pneumonia', 'false_negative_rate', 'fn', 'exec_time']
+    
+    # Make sure to include all sort columns
+    for col, _ in sort_by:
+        if col not in cols:
+            cols.append(col)
+    
+    # Filter to columns that exist in the dataframe
+    cols = [col for col in cols if col in df.columns]
+    
+    # Create a copy of the data with only needed columns
+    table_df = df[cols].copy()
+    
+    # Remove rows with NaN in any sort column
+    for col, _ in sort_by:
+        table_df = table_df.dropna(subset=[col])
+    
+    if table_df.empty:
+        print("All rows contain NaN values in sort columns.")
+        return pd.DataFrame()
+    
+    # Sort the data
+    sort_cols = [col for col, _ in sort_by]
+    sort_ascending = [asc for _, asc in sort_by]
+    table_df = table_df.sort_values(sort_cols, ascending=sort_ascending)
+    
     # Format columns for display
     format_map = {
-        'test_accuracy': '{:.4f}', 'test_auc': '{:.4f}',
-        'precision_pneumonia': '{:.4f}', 'recall_pneumonia': '{:.4f}',
+        'test_accuracy': '{:.8f}', 
+        'test_auc': '{:.8f}',
+        'precision_pneumonia': '{:.4f}', 
+        'precision': '{:.4f}',
+        'recall_pneumonia': '{:.4f}',
+        'true_positive_rate': '{:.4f}',
+        'false_positive_rate': '{:.4%}',
         'f1_pneumonia': '{:.4f}',
-        'false_negative_rate': '{:.2%}',
-        'exec_time': '{:.1f}s',
-        'fn': '{:.0f}' # Raw false negatives
+        'false_negative_rate': '{:.4%}',
+        'fn': '{:.0f}',  # Raw false negatives
+        'exec_time': '{:.2f}s'
     }
+    
+    formatted_df = table_df.copy()
     for col, fmt in format_map.items():
-        if col in table_df.columns:
-            table_df[col] = table_df[col].map(lambda x: fmt.format(x) if pd.notna(x) else 'N/A')
-
+        if col in formatted_df.columns:
+            formatted_df[col] = formatted_df[col].map(lambda x: fmt.format(x) if pd.notna(x) else 'N/A')
+    
     # Rename columns for better display
-    table_df.columns = ['Model', 'Augmented', 'Batch Size', 'Dropout',
-                        'Accuracy', 'AUC', 'Precision (Pneu)', 'Recall (Pneu)',
-                        'F1 (Pneu)', 'FNR', 'Time', 'FN Count']
-
-    return table_df.head(top_n)
+    column_name_map = {
+        'model_base_name': 'Model',
+        'augmentation': 'Augmentation',
+        'batch_size': 'Batch Size',
+        'dropout_setting': 'Dropout Strategy',
+        'test_accuracy': 'Accuracy',
+        'test_auc': 'AUC',
+        'precision_pneumonia': 'Precision (Pneu)',
+        'precision': 'Precision',
+        'recall_pneumonia': 'Recall (Pneu)',
+        'true_positive_rate': 'TPR',
+        'false_positive_rate': 'FPR',
+        'f1_pneumonia': 'F1 (Pneu)',
+        'false_negative_rate': 'FN Rate',
+        'fn': 'FN Count',
+        'exec_time': 'Execution Time'
+    }
+    
+    formatted_df = formatted_df.rename(columns={col: column_name_map.get(col, col) 
+                                                for col in formatted_df.columns})
+    
+    return formatted_df.head(top_n)
