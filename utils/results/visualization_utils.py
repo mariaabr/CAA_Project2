@@ -121,54 +121,7 @@ def plot_metric_comparison(df, metric='test_auc', title_metric='AUC', ylim=(0.8,
         ncol=1
     )
     
-    # Create results dataframe with all bar data
-    results = []
-    
-    # Iterate through dropout settings
-    for dropout in DROPOUT_SETTINGS:
-        # Get data for this dropout setting
-        dropout_data = df[df['dropout_setting'] == dropout]
-        
-        # For each model/augmentation combination
-        for model, aug in custom_hue_order:
-            model_aug_data = dropout_data[
-                (dropout_data['model_base_name'] == model) & 
-                (dropout_data['augmentation'] == aug)
-            ]
-            
-            # Only include if we have data
-            if not model_aug_data.empty:
-                # Calculate statistics
-                mean_value = model_aug_data[metric].mean()
-                
-                # Calculate 95% confidence interval
-                import scipy.stats as stats
-                n = len(model_aug_data)
-                if n > 1:  # Can only calculate CI with more than one sample
-                    sem = model_aug_data[metric].sem()
-                    ci_95 = stats.t.interval(0.95, n-1, loc=mean_value, scale=sem)
-                    lower_ci, upper_ci = ci_95
-                else:
-                    # If only one sample, use the value itself
-                    lower_ci = upper_ci = mean_value
-                
-                results.append({
-                    'Dropout Strategy': dropout,
-                    'Model': model,
-                    'Augmented': 'Yes' if aug else 'No',
-                    f'Mean {title_metric}': mean_value,
-                    f'Lower CI (95%)': lower_ci,
-                    f'Upper CI (95%)': upper_ci
-                })
-    
-    # Create dataframe from collected results
-    result_df = pd.DataFrame(results)
-    
-    # Display the plot
-    plt.show()
-    
-    # Return the dataframe with the results
-    return result_df
+    return plt.show()
 
 def plot_false_negative_comparison(df):
     """Plot false negative rates comparison across models and augmentation."""
@@ -220,54 +173,7 @@ def plot_false_negative_comparison(df):
     plt.tight_layout()
     plt.legend(title='Augmentation')
     
-    # Create results dataframe with mean and extreme values
-    results = []
-    
-    # For each model/augmentation combination
-    for model in MODELS:
-        for aug in [False, True]:
-            model_aug_data = plot_df[
-                (plot_df['model_base_name'] == model) & 
-                (plot_df['augmentation'] == aug)
-            ]
-            
-            # Only include if we have data
-            if not model_aug_data.empty:
-                # Calculate statistics
-                mean_value = model_aug_data['false_negative_rate'].mean()
-                min_value = model_aug_data['false_negative_rate'].min()  # Best case (lowest FNR)
-                max_value = model_aug_data['false_negative_rate'].max()  # Worst case (highest FNR)
-                
-                # Calculate 95% confidence interval
-                import scipy.stats as stats
-                n = len(model_aug_data)
-                if n > 1:  # Can only calculate CI with more than one sample
-                    sem = model_aug_data['false_negative_rate'].sem()
-                    ci_95 = stats.t.interval(0.95, n-1, loc=mean_value, scale=sem)
-                    lower_ci, upper_ci = ci_95
-                else:
-                    # If only one sample, use the value itself
-                    lower_ci = upper_ci = mean_value
-                
-                results.append({
-                    'Model': model,
-                    'Augmented': 'Yes' if aug else 'No',
-                    'Mean False Negative Rate': mean_value,
-                    'Best Case (Min FNR)': min_value,
-                    'Worst Case (Max FNR)': max_value,
-                    'Lower CI (95%)': lower_ci,
-                    'Upper CI (95%)': upper_ci,
-                    'Sample Size': n
-                })
-    
-    # Create dataframe from collected results
-    result_df = pd.DataFrame(results)
-    
-    # Display the plot
-    plt.show()
-    
-    # Return the dataframe with the results
-    return result_df
+    return plt.show()
 
 def plot_execution_time_comparison(df):
     """Plot execution time comparison across models and batch sizes."""
@@ -367,56 +273,7 @@ def plot_execution_time_comparison(df):
     # Adjust layout
     ax_grid.figure.tight_layout(rect=[0, 0, 0.9, 1])
     
-    # Create results dataframe with all data combinations
-    results = []
-    
-    # For each model/augmentation/batch_size combination
-    for model in MODELS:
-        for aug in [False, True]:
-            for batch_size in plot_df['batch_size'].unique():
-                subset = plot_df[
-                    (plot_df['model_base_name'] == model) & 
-                    (plot_df['augmentation'] == aug) &
-                    (plot_df['batch_size'] == batch_size)
-                ]
-                
-                # Only include if we have data
-                if not subset.empty:
-                    # Calculate statistics
-                    mean_value = subset['exec_time'].mean()
-                    min_value = subset['exec_time'].min()  # Best case (fastest time)
-                    max_value = subset['exec_time'].max()  # Worst case (slowest time)
-                    
-                    # Calculate 95% confidence interval
-                    import scipy.stats as stats
-                    n = len(subset)
-                    if n > 1:  # Can only calculate CI with more than one sample
-                        sem = subset['exec_time'].sem()
-                        ci_95 = stats.t.interval(0.95, n-1, loc=mean_value, scale=sem)
-                        lower_ci, upper_ci = ci_95
-                    else:
-                        # If only one sample, use the value itself
-                        lower_ci = upper_ci = mean_value
-                    
-                    results.append({
-                        'Model': model,
-                        'Augmented': 'Yes' if aug else 'No',
-                        'Batch Size': batch_size,
-                        'Mean Execution Time (s)': mean_value,
-                        'Best Case (Min Time)': min_value,
-                        'Worst Case (Max Time)': max_value,
-                        'Lower CI (95%)': lower_ci,
-                        'Upper CI (95%)': upper_ci,
-                        'Sample Size': n
-                    })
-    
-    # Create dataframe from collected results
-    result_df = pd.DataFrame(results)
-
-    # Display the plot
-    plt.show()
-    
-    return result_df
+    return plt.show()
 
 def plot_model_performance(df, x_metric, y_metric, title=None, x_label=None, y_label=None, add_regression=True):
     """Generalized plotting function for model performance with customizable metrics."""
@@ -620,7 +477,7 @@ def plot_hyperparameter_impact(df, group_var, metrics=['test_accuracy', 'test_au
         ax.set_ylim(0, max_val * 1.1)
 
     plt.tight_layout()
-    plt.show()
+    return plt.show()
 
 def plot_aug_impact_by_model(model_df, model_col='model_base_name', augment_col='augmentation', metric_col='test_auc', palette=AUG_IMPACT_PALETTE, figsize=(12, 8)):
     """Plot impact of data augmentation on mean metric by model type."""
@@ -711,128 +568,3 @@ def plot_correlation_matrix(model_df, cols=DEFAULT_NUMERIC_COLS, figsize=(10, 8)
     plt.tight_layout()
 
     return plt.show()
-
-def create_best_models_table(df, top_n=10, sort_by=None):
-    """
-    Create a formatted table of the best performing models with multi-metric sorting.
-    
-    Args:
-        df (pd.DataFrame): DataFrame containing model data
-        top_n (int): Number of top models to display
-        sort_by (list or str): List of columns to sort by, with each item being either:
-                            - A string column name (will use ascending=False by default)
-                            - A tuple of (column_name, ascending_bool)
-                            If a string is provided, it will be converted to a single-item list
-    
-    Returns:
-        pd.DataFrame: Formatted table of top models
-    """
-    if df.empty:
-        print("Cannot create table. DataFrame is empty.")
-        return pd.DataFrame()
-    
-    # Handle sort_by parameter
-    if sort_by is None:
-        sort_by = [('test_auc', False)]  # Default sort by test_auc descending
-    elif isinstance(sort_by, str):
-        # For single column string, convert to list with default ascending=False
-        # Special case: false_negative_rate should be ascending=True (lower is better)
-        ascending = True if sort_by == 'false_negative_rate' else False
-        sort_by = [(sort_by, ascending)]
-    elif isinstance(sort_by, list):
-        # Process each item in the list
-        processed_sort_by = []
-        for item in sort_by:
-            if isinstance(item, str):
-                # If string, use default ascending value based on metric name
-                ascending = True if item == 'false_negative_rate' else False
-                processed_sort_by.append((item, ascending))
-            elif isinstance(item, tuple) and len(item) == 2:
-                # If tuple with column and ascending boolean, use as is
-                processed_sort_by.append(item)
-            else:
-                print(f"Warning: Invalid sort specification {item}. Skipping.")
-        sort_by = processed_sort_by
-    
-    # Check if all sort columns exist
-    sort_columns = [col for col, _ in sort_by]
-    missing_cols = [col for col in sort_columns if col not in df.columns]
-    if missing_cols:
-        print(f"Warning: Sort columns {missing_cols} not found in DataFrame. Using available columns only.")
-        sort_by = [(col, asc) for col, asc in sort_by if col in df.columns]
-        if not sort_by:
-            print("No valid sort columns. Using default sort by test_auc.")
-            sort_by = [('test_auc', False)]
-    
-    # Select and copy relevant columns
-    cols = ['model_base_name', 'augmentation', 'batch_size', 'dropout_setting',
-            'test_accuracy', 'test_auc', 'precision_pneumonia', 'recall_pneumonia',
-            'f1_pneumonia', 'false_negative_rate', 'fn', 'exec_time']
-    
-    # Make sure to include all sort columns
-    for col, _ in sort_by:
-        if col not in cols:
-            cols.append(col)
-    
-    # Filter to columns that exist in the dataframe
-    cols = [col for col in cols if col in df.columns]
-    
-    # Create a copy of the data with only needed columns
-    table_df = df[cols].copy()
-    
-    # Remove rows with NaN in any sort column
-    for col, _ in sort_by:
-        table_df = table_df.dropna(subset=[col])
-    
-    if table_df.empty:
-        print("All rows contain NaN values in sort columns.")
-        return pd.DataFrame()
-    
-    # Sort the data
-    sort_cols = [col for col, _ in sort_by]
-    sort_ascending = [asc for _, asc in sort_by]
-    table_df = table_df.sort_values(sort_cols, ascending=sort_ascending)
-    
-    # Format columns for display
-    format_map = {
-        'test_accuracy': '{:.8f}', 
-        'test_auc': '{:.8f}',
-        'precision_pneumonia': '{:.4f}', 
-        'precision': '{:.4f}',
-        'recall_pneumonia': '{:.4f}',
-        'true_positive_rate': '{:.4f}',
-        'false_positive_rate': '{:.4%}',
-        'f1_pneumonia': '{:.4f}',
-        'false_negative_rate': '{:.4%}',
-        'fn': '{:.0f}',  # Raw false negatives
-        'exec_time': '{:.2f}s'
-    }
-    
-    formatted_df = table_df.copy()
-    for col, fmt in format_map.items():
-        if col in formatted_df.columns:
-            formatted_df[col] = formatted_df[col].map(lambda x: fmt.format(x) if pd.notna(x) else 'N/A')
-    
-    # Rename columns for better display
-    column_name_map = {
-        'model_base_name': 'Model',
-        'augmentation': 'Augmentation',
-        'batch_size': 'Batch Size',
-        'dropout_setting': 'Dropout Strategy',
-        'test_accuracy': 'Accuracy',
-        'test_auc': 'AUC',
-        'precision_pneumonia': 'Precision (Pneu)',
-        'precision': 'Precision',
-        'recall_pneumonia': 'Recall (Pneu)',
-        'true_positive_rate': 'TPR',
-        'false_positive_rate': 'FPR',
-        'f1_pneumonia': 'F1 (Pneu)',
-        'false_negative_rate': 'FN Rate',
-        'fn': 'FN Count',
-        'exec_time': 'Execution Time'
-    }
-    
-    formatted_df = formatted_df.rename(columns={col: column_name_map.get(col, col) 
-                                                for col in formatted_df.columns})
-    
-    return formatted_df.head(top_n)
