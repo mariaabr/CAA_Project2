@@ -5,86 +5,81 @@ from utils.results.constants import MODELS, BASE_COLORS, AUGMENTATION_COLOR_MAP,
 
 def get_best_model_executions(df, metrics=None):
     """
-    Creates a table showing the best execution of each model architecture ranked by AUC.
+    Creates a table showing the best execution of each model architecture.
+    Best execution is determined by lowest FN count, highest AUC, and highest accuracy,
+    but models are presented in the order of MODELS constant.
     
     Args:
         df (pd.DataFrame): DataFrame containing model evaluation results
         metrics (list): Optional list of additional metrics to include in the table
     
     Returns:
-        pd.DataFrame: Table of best models ranked by AUC
+        pd.DataFrame: Table of best models ordered by MODELS constant
     """
     if df.empty:
         print("Cannot create table. DataFrame is empty.")
         return pd.DataFrame()
-    
-    # Ensure required columns exist
-    if 'model_base_name' not in df.columns or 'test_auc' not in df.columns:
-        print("Required columns 'model_base_name' or 'test_auc' missing from DataFrame")
+
+    required = {'model_base_name', 'test_auc', 'test_accuracy', 'fn'}
+    missing = required - set(df.columns)
+    if missing:
+        print(f"Required columns missing: {missing}")
         return pd.DataFrame()
-    
+
     # Default metrics to include
     if metrics is None:
-        metrics = ['test_auc', 'test_accuracy', 'false_negative_rate', 'fn']
+        metrics = ['fn', 'false_negative_rate', 'test_auc', 'test_accuracy']
+
+    # Sort globally so that for each model the first row is the best
+    df_sorted = df.sort_values(
+        by=['model_base_name', 'fn', 'test_auc', 'test_accuracy'],
+        ascending=[True, True, False, False]
+    )
     
-    # Find the best execution for each model architecture
-    best_models = []
+    # Pick the top (best) execution per model
+    best_df = df_sorted.drop_duplicates('model_base_name', keep='first').copy()
     
-    for model_name in df['model_base_name'].unique():
-        model_df = df[df['model_base_name'] == model_name].dropna(subset=['test_auc'])
-        
-        if not model_df.empty:
-            # Get the row with the highest AUC
-            best_idx = model_df['test_auc'].idxmax()
-            best_row = model_df.loc[best_idx].to_dict()
-            best_models.append(best_row)
+    # Instead of ranking, reorder the models according to the MODELS constant
+    # Create a categorical type with the correct order
+    model_cat_type = pd.CategoricalDtype(categories=MODELS, ordered=True)
+    best_df['model_base_name'] = best_df['model_base_name'].astype(model_cat_type)
     
-    if not best_models:
-        print("No valid model executions found with AUC values.")
-        return pd.DataFrame()
-    
-    # Create DataFrame and sort by AUC descending
-    result_df = pd.DataFrame(best_models)
-    result_df = result_df.sort_values('test_auc', ascending=False).reset_index(drop=True)
-    
-    # Add rank column
-    result_df.insert(0, 'Rank', range(1, len(result_df) + 1))
-    
-    # Select relevant columns that exist in the data
-    display_cols = ['Rank', 'model_base_name', 'augmentation']
-    for metric in metrics:
-        if metric in result_df.columns:
-            display_cols.append(metric)
-    
-    # Format columns for display
-    result_df = result_df[display_cols].copy()
-    
-    # Convert augmentation to Yes/No
-    if 'augmentation' in result_df.columns:
-        result_df['augmentation'] = result_df['augmentation'].map({True: 'Yes', False: 'No'})
-    
-    # Format percentages and numbers
-    if 'false_negative_rate' in result_df.columns:
-        result_df['false_negative_rate'] = result_df['false_negative_rate'].map('{:.2%}'.format)
-    if 'test_auc' in result_df.columns:
-        result_df['test_auc'] = result_df['test_auc'].map('{:.4f}'.format)
-    if 'test_accuracy' in result_df.columns:
-        result_df['test_accuracy'] = result_df['test_accuracy'].map('{:.4f}'.format)
-    
-    # Rename columns for clarity
-    column_rename_map = {
+    # Sort by the categorical order (MODELS list order)
+    best_df = best_df.sort_values('model_base_name').reset_index(drop=True)
+
+    # Build the display column list
+    display_cols = ['model_base_name']
+    if 'augmentation' in best_df.columns:
+        display_cols.append('augmentation')
+    for m in metrics:
+        if m in best_df.columns:
+            display_cols.append(m)
+
+    result = best_df[display_cols].copy()
+
+    # Formatting
+    if 'false_negative_rate' in result.columns:
+        result['false_negative_rate'] = result['false_negative_rate'].map('{:.2%}'.format)
+    if 'test_auc' in result.columns:
+        result['test_auc'] = result['test_auc'].map('{:.4f}'.format)
+    if 'test_accuracy' in result.columns:
+        result['test_accuracy'] = result['test_accuracy'].map('{:.4f}'.format)
+
+    # Rename for final display
+    rename_map = {
         'model_base_name': 'Model',
         'augmentation': 'Augmentation',
+        'fn': 'FN Count',
+        'false_negative_rate': 'FNR',
         'test_auc': 'AUC',
         'test_accuracy': 'Accuracy',
-        'false_negative_rate': 'FNR',
-        'fn': 'FN Count'
+        'dropout_setting': 'Dropout Strategy',
+        'batch_size': 'Batch Size',
+        'exec_time': 'Execution Time (s)'
     }
+    result.rename(columns=rename_map, inplace=True)
 
-    # Set index to rank
-    result_df.set_index('Rank', inplace=True)
-    
-    return result_df.rename(columns=column_rename_map)
+    return result
 
 def get_metric_comparison_data(df, metric='test_auc', title_metric='AUC'):
     """
