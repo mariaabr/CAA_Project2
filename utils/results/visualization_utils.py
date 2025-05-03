@@ -364,6 +364,18 @@ def plot_precision_recall_tradeoff(df, add_regression=True):
         add_regression=add_regression
     )
 
+def plot_fnr_fpr_tradeoff(df, add_regression=True):
+    """False Negative Rate vs. False Positive Rate Trade-off (Pneumonia Detection)."""
+    return plot_model_performance(
+        df=df,
+        x_metric='false_positive_rate',
+        y_metric='false_negative_rate',
+        title='False Negative Rate vs. False Positive Rate Trade-off',
+        x_label='False Positive Rate (Lower is Better)',
+        y_label='False Negative Rate (Lower is Better)',
+        add_regression=add_regression
+    )
+
 def plot_efficiency_tradeoff(df, add_regression=True):
     """Efficiency Trade-off: Test AUC vs. Execution Time."""
     return plot_model_performance(
