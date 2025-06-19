@@ -1,5 +1,5 @@
-# CAA_Project - Deep Learning Approaches for Pneumonia Detection: A Comparative Study on Chest X-Ray Images
-Repository containing the first project developed in the Complementos de Aprendizagem Automática (CAA) course.
+# CAA_Project - Deep Learning Architectures for Pneumonia Detection: Multi-Scale Analysis with Explainable AI
+Repository containing the second project developed in the Complementos de Aprendizagem Automática (CAA) course.
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -11,7 +11,7 @@ Repository containing the first project developed in the Complementos de Aprendi
 5. [License](#license)
 
 ## Introduction
-This project aims to compare different deep learning approaches for detecting pneumonia using chest X-ray images. The study evaluates the performance of various models and techniques to identify the most effective method for this task.
+This project extends the comparative study of deep learning approaches for pneumonia detection using chest X-ray images. The study evaluates different CNN architectures (AlexNet, ResNet18, ResNet50, DenseNet169) across multiple image resolutions (28x28, 64x64, 128x128, 224x224) and incorporates Explainable AI (XAI) techniques including GradCAM, LIME, and SHAP to understand model decision-making processes. The project combines performance analysis with interpretability to provide comprehensive insights into pneumonia detection in medical imaging.
 
 ## Installation
 To get started with this project, follow the steps below:

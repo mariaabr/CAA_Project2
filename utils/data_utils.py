@@ -117,3 +117,190 @@ def load_and_preprocess_data(data_path="../data/", augment=False, batch_size=32,
         return train_dataset, (test_images, test_labels), (val_images, val_labels)
     else:
         return train_images, train_labels, test_images, test_labels, val_images, val_labels
+
+def load_data_multiscale(data_path="../data/", dataset_folder="pneumoniamnist_28/"):
+    """Load data from specific dataset folder for different image sizes.
+    
+    Args:
+        data_path: Base path to the data directory
+        dataset_folder: Specific folder for the image size (e.g., pneumoniamnist_64/)
+        
+    Returns:
+        Tuple of numpy arrays: train_images, train_labels, test_images, test_labels, val_images, val_labels
+    """
+    full_path = data_path + dataset_folder
+    
+    try:
+        train_images = np.load(full_path + "train_images.npy")
+        train_labels = np.load(full_path + "train_labels.npy")
+        test_images = np.load(full_path + "test_images.npy")
+        test_labels = np.load(full_path + "test_labels.npy")
+        val_images = np.load(full_path + "val_images.npy")
+        val_labels = np.load(full_path + "val_labels.npy")
+        
+        print(f"\nDataset shapes - Loaded from {dataset_folder}:")
+        print("Train - images:", train_images.shape, " labels:", train_labels.shape)
+        print("Val   - images:", val_images.shape, " labels:", val_labels.shape)
+        print("Test  - images:", test_images.shape, " labels:", test_labels.shape)
+        
+        return train_images, train_labels, test_images, test_labels, val_images, val_labels
+    
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"Could not load data from {full_path}. Make sure the dataset exists. Error: {e}")
+
+
+def preprocess_data_multiscale(images, labels, target_size):
+    """Preprocess data for specific image size.
+    
+    Args:
+        images: Raw image arrays
+        labels: Label arrays
+        target_size: Target image size (assuming square images)
+        
+    Returns:
+        Tuple of preprocessed images and labels
+    """
+    # Reshape to include channel dimension (grayscale = 1 channel)
+    images = images.reshape(images.shape[0], target_size, target_size, 1)
+    
+    # Normalize pixel values
+    images = images.astype('float32') / 255.0
+    
+    # Convert labels to one-hot encoding
+    labels = to_categorical(labels, 2)
+    
+    return images, labels
+
+
+def load_and_preprocess_data_multiscale(data_path="../data/", dataset_folder="pneumoniamnist_28/", 
+                                       target_size=28, augment=False, batch_size=32, seed=42):
+    """Load and preprocess data from specific dataset folder, with optional augmentation.
+    
+    Args:
+        data_path: Path to the data directory
+        dataset_folder: Specific folder for the image size (e.g., pneumoniamnist_64/)
+        target_size: Target image size (should match the dataset folder)
+        augment: Whether to apply data augmentation to training data
+        batch_size: Batch size if using augmentation
+        seed: Random seed for reproducibility
+        
+    Returns:
+        If augment=False: Regular numpy arrays (backward compatible)
+        If augment=True: tf.data.Dataset for training, numpy arrays for test/val
+    """
+    # Set NumPy random seed for reproducibility
+    np.random.seed(seed)
+    
+    # Set TensorFlow random seed for reproducibility
+    tf.random.set_seed(seed)
+    
+    train_images, train_labels, test_images, test_labels, val_images, val_labels = load_data_multiscale(
+        data_path, dataset_folder)
+    
+    train_images, train_labels = preprocess_data_multiscale(train_images, train_labels, target_size)
+    test_images, test_labels = preprocess_data_multiscale(test_images, test_labels, target_size)
+    val_images, val_labels = preprocess_data_multiscale(val_images, val_labels, target_size)
+
+    print(f"\nDataset shapes - After preprocessing for {target_size}x{target_size}:")
+    print("Train images shape:", train_images.shape)
+    print("Train labels shape:", train_labels.shape)
+    print("Val images shape:", val_images.shape)
+    print("Val labels shape:", val_labels.shape)
+    print("Test images shape:", test_images.shape)
+    print("Test labels shape:", test_labels.shape)
+    
+    if augment:
+        print(f"\nApplying data augmentation to training data for {target_size}x{target_size} images...")
+        train_dataset = apply_augmentation(train_images, train_labels, batch_size, seed=seed)
+        return train_dataset, (test_images, test_labels), (val_images, val_labels)
+    else:
+        return train_images, train_labels, test_images, test_labels, val_images, val_labels
+
+def load_multiscale_data(data_path="../data/", image_size=28):
+    """
+    Load pneumonia dataset with specified image size.
+    
+    Args:
+        data_path: Base path to data directory
+        image_size: Size of images to load (28, 64, 128, or 224)
+        
+    Returns:
+        Tuple of (train_images, train_labels, test_images, test_labels, val_images, val_labels)
+    """
+    # Construct path for specific image size
+    size_path = f"{data_path}pneumoniamnist_{image_size}/"
+    
+    # Load data files
+    train_images = np.load(size_path + "train_images.npy")
+    train_labels = np.load(size_path + "train_labels.npy")
+    test_images = np.load(size_path + "test_images.npy")
+    test_labels = np.load(size_path + "test_labels.npy")
+    val_images = np.load(size_path + "val_images.npy")
+    val_labels = np.load(size_path + "val_labels.npy")
+    
+    print(f"\nDataset shapes - {image_size}x{image_size} resolution:")
+    print("Train - images:", train_images.shape, " labels:", train_labels.shape)
+    print("Val   - images:", val_images.shape, " labels:", val_labels.shape)
+    print("Test  - images:", test_images.shape, " labels:", test_labels.shape)
+    
+    return train_images, train_labels, test_images, test_labels, val_images, val_labels
+
+
+def preprocess_multiscale_data(images, labels, image_size):
+    """
+    Preprocess data for specified image size.
+    
+    Args:
+        images: Raw image data
+        labels: Raw label data
+        image_size: Target image size
+        
+    Returns:
+        Tuple of preprocessed (images, labels)
+    """
+    # Reshape to include channel dimension (grayscale = 1 channel)
+    images = images.reshape(images.shape[0], image_size, image_size, 1)
+    
+    # Normalize pixel values
+    images = images.astype('float32') / 255.0
+    
+    # Convert labels to one-hot encoding
+    labels = to_categorical(labels, 2)
+    
+    return images, labels
+
+
+def load_and_preprocess_multiscale_data(data_path="../data/", image_size=28, augment=False, batch_size=32, seed=42):
+    """
+    Load and preprocess pneumonia dataset with specified image size and optional augmentation.
+    
+    Args:
+        data_path: Base path to data directory
+        image_size: Size of images to load (28, 64, 128, or 224)
+        augment: Whether to apply data augmentation
+        batch_size: Batch size for training dataset
+        seed: Random seed for reproducibility
+        
+    Returns:
+        Tuple of (train_dataset, (test_images, test_labels), (val_images, val_labels))
+    """
+    # Load raw data
+    train_images, train_labels, test_images, test_labels, val_images, val_labels = load_multiscale_data(
+        data_path, image_size
+    )
+    
+    # Preprocess data
+    train_images, train_labels = preprocess_multiscale_data(train_images, train_labels, image_size)
+    test_images, test_labels = preprocess_multiscale_data(test_images, test_labels, image_size)
+    val_images, val_labels = preprocess_multiscale_data(val_images, val_labels, image_size)
+    
+    # Create training dataset
+    if augment:
+        # Apply augmentation
+        train_dataset = apply_augmentation(train_images, train_labels, batch_size, seed)
+    else:
+        # Create dataset without augmentation
+        train_dataset = tf.data.Dataset.from_tensor_slices((train_images, train_labels))
+        train_dataset = train_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    
+    return train_dataset, (test_images, test_labels), (val_images, val_labels)
