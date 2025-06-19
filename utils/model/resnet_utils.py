@@ -1,3 +1,4 @@
+import tensorflow as tf
 from tensorflow.keras import layers, models, callbacks
 
 #### ResNet-18 Functions ####
@@ -144,6 +145,131 @@ def build_resnet50(input_shape=(28, 28, 1), num_classes=2, dropout_rate=0.3):
     
     model = models.Model(inputs, outputs)
     return model
+
+#### ResNet18 Adaptation and Weight Transfer Functions ####
+
+def adapt_resnet18_for_resolution(model, target_size, dropout_rate=None):
+    """
+    Adapt a pretrained ResNet18 model for a different input resolution.
+    
+    This function rebuilds the ResNet18 architecture with the new input size,
+    matching the exact layer structure from build_resnet18().
+    
+    Args:
+        model: Pretrained ResNet18 model
+        target_size: Target image size (assuming square images)
+        dropout_rate: Dropout rate for new model (uses original if None)
+        
+    Returns:
+        Adapted ResNet18 model for the new resolution
+    """
+    # Extract dropout rate from original model if not specified
+    if dropout_rate is None:
+        try:
+            # Get dropout rate from the original model's dropout layer
+            dropout_layer = model.get_layer('dropout')
+            dropout_rate = dropout_layer.rate
+        except:
+            dropout_rate = 0.3  # Default fallback
+    
+    print(f"Building new ResNet18 for {target_size}x{target_size} resolution...")
+    print(f"Using dropout rate: {dropout_rate}")
+    
+    # Use the existing build_resnet18 function with new input size
+    adapted_model = build_resnet18(
+        input_shape=(target_size, target_size, 1),
+        num_classes=2,  # For binary pneumonia classification with one-hot encoding
+        dropout_rate=dropout_rate
+    )
+    
+    print(f"✓ ResNet18 successfully adapted from {model.input_shape} to ({target_size}, {target_size}, 1)")
+    print(f"Original parameters: {model.count_params():,}")
+    print(f"Adapted parameters: {adapted_model.count_params():,}")
+    
+    return adapted_model
+
+
+def transfer_resnet18_weights(source_model, target_model):
+    """
+    Transfer weights between ResNet18 models with potentially different input sizes.
+    
+    This function matches layers by their name and type, since ResNet18 has a 
+    consistent naming convention for layers.
+    
+    Args:
+        source_model: Source ResNet18 model
+        target_model: Target ResNet18 model
+        
+    Returns:
+        Target model with transferred weights
+    """
+    print("\nTransferring ResNet18 weights...")
+    
+    transferred_count = 0
+    
+    # Create a mapping of source layers by name
+    source_layers = {layer.name: layer for layer in source_model.layers}
+    
+    # Transfer weights for compatible layers
+    for target_layer in target_model.layers:
+        layer_name = target_layer.name
+        
+        # Skip if source doesn't have this layer
+        if layer_name not in source_layers:
+            continue
+            
+        source_layer = source_layers[layer_name]
+        
+        # Only transfer weights for layers that have them
+        if hasattr(source_layer, 'get_weights') and len(source_layer.get_weights()) > 0:
+            
+            if isinstance(source_layer, tf.keras.layers.Conv2D):
+                # Transfer Conv2D weights (should work for same filter configurations)
+                try:
+                    if (source_layer.filters == target_layer.filters and 
+                        source_layer.kernel_size == target_layer.kernel_size):
+                        target_layer.set_weights(source_layer.get_weights())
+                        print(f"✓ Conv2D layer {layer_name}: {source_layer.filters} filters")
+                        transferred_count += 1
+                    else:
+                        print(f"✗ Conv2D layer {layer_name}: incompatible configuration")
+                except Exception as e:
+                    print(f"✗ Conv2D layer {layer_name}: transfer failed - {e}")
+                        
+            elif isinstance(source_layer, tf.keras.layers.Dense):
+                # For Dense layers, only transfer if dimensions match
+                try:
+                    source_weights = source_layer.get_weights()
+                    target_weights = target_layer.get_weights()
+                    
+                    # Skip output layer if dimensions don't match (num_classes difference)
+                    if layer_name == "fc":  # Output layer
+                        if source_weights[0].shape[1] != target_weights[0].shape[1]:
+                            print(f"✗ Dense layer {layer_name} (output): skipping due to different output dimensions")
+                            continue
+                    
+                    # Check if weight dimensions match
+                    if source_weights[0].shape == target_weights[0].shape:
+                        target_layer.set_weights(source_weights)
+                        print(f"✓ Dense layer {layer_name}: {source_layer.units} units")
+                        transferred_count += 1
+                    else:
+                        print(f"✗ Dense layer {layer_name}: incompatible shapes {source_weights[0].shape} vs {target_weights[0].shape}")
+                except Exception as e:
+                    print(f"✗ Dense layer {layer_name}: transfer failed - {e}")
+                        
+            elif isinstance(source_layer, tf.keras.layers.BatchNormalization):
+                # Transfer BatchNorm weights
+                try:
+                    target_layer.set_weights(source_layer.get_weights())
+                    print(f"✓ BatchNorm layer {layer_name}")
+                    transferred_count += 1
+                except Exception as e:
+                    print(f"✗ BatchNorm layer {layer_name}: transfer failed - {e}")
+    
+    print(f"\nResNet18 weight transfer complete: {transferred_count} layers transferred")
+    
+    return target_model
 
 #### Custom Callbacks ####
 

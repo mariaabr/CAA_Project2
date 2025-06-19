@@ -92,13 +92,11 @@ def load_pretrained_model(model_path: str) -> tf.keras.Model:
     
     print(f"Loading model from: {model_path}")
     model = tf.keras.models.load_model(model_path)
-
-    extract_model_params(model_path)
     print(f"Model loaded successfully: {model.name}")
     return model
 
 
-def adapt_model_for_resolution(model: tf.keras.Model, target_size: int, dropout_rate: float = None) -> tf.keras.Model:
+def adapt_model_for_resolution(model: tf.keras.Model, target_size: int, architecture: str = None, dropout_rate: float = None) -> tf.keras.Model:
     """
     Adapt a pretrained model for a different input resolution.
     
@@ -108,15 +106,25 @@ def adapt_model_for_resolution(model: tf.keras.Model, target_size: int, dropout_
     Args:
         model (tf.keras.Model): Pretrained model
         target_size (int): Target image size (assuming square images)
+        architecture (str): Architecture name ('alexnet', 'resnet18', etc.). If None, tries to infer from model name
         dropout_rate (float, optional): Dropout rate for new model
         
     Returns:
         tf.keras.Model: Adapted model for the new resolution
     """
-    # Try to determine architecture and use specific adapter
-    model_name = model.name.lower()
+    # Use provided architecture or try to determine from model name
+    if architecture is None:
+        model_name = model.name.lower()
+        if 'alexnet' in model_name:
+            architecture = 'alexnet'
+        elif 'resnet18' in model_name or 'resnet_18' in model_name:
+            architecture = 'resnet18'
+        elif 'resnet50' in model_name or 'resnet_50' in model_name:
+            architecture = 'resnet50'
+        elif 'densenet' in model_name:
+            architecture = 'densenet169'
     
-    if 'alexnet' in model_name or len(model.layers) in range(25, 35):
+    if architecture == 'alexnet':
         # Use AlexNet-specific adapter
         try:
             from utils.model.alexnet_utils import adapt_alexnet_for_resolution
@@ -124,15 +132,16 @@ def adapt_model_for_resolution(model: tf.keras.Model, target_size: int, dropout_
         except ImportError:
             print("Warning: AlexNet utils not found, using generic adaptation")
     
-    elif 'resnet' in model_name:
-        # Use ResNet-specific adapter (when implemented)
+    elif architecture in ['resnet18', 'resnet_18']:
+        # Use ResNet18-specific adapter
         try:
-            from utils.model.resnet_utils import adapt_resnet_for_resolution
-            return adapt_resnet_for_resolution(model, target_size, dropout_rate)
+            from utils.model.resnet_utils import adapt_resnet18_for_resolution
+            return adapt_resnet18_for_resolution(model, target_size, dropout_rate)
         except ImportError:
-            print("Warning: ResNet adapter not implemented yet")
+            print("Warning: ResNet18 adapter not implemented yet")
+            return None
     
-    elif 'densenet' in model_name:
+    elif architecture in ['densenet169', 'densenet_169']:
         # Use DenseNet-specific adapter (when implemented)
         try:
             from utils.model.densenet_utils import adapt_densenet_for_resolution
@@ -310,7 +319,7 @@ def generate_tuned_model_path(original_params: Dict[str, Any],
     return os.path.join(output_path, filename)
 
 
-def transfer_compatible_weights(source_model: tf.keras.Model, target_model: tf.keras.Model, verbose: bool = True) -> tf.keras.Model:
+def transfer_compatible_weights(source_model: tf.keras.Model, target_model: tf.keras.Model, architecture: str = None) -> tf.keras.Model:
     """
     Transfer weights from source model to target model for compatible layers.
     
@@ -320,54 +329,57 @@ def transfer_compatible_weights(source_model: tf.keras.Model, target_model: tf.k
     Args:
         source_model: Model to transfer weights from
         target_model: Model to transfer weights to
-        verbose: Whether to print transfer information
+        architecture: Architecture name ('alexnet', 'resnet18', etc.). If None, tries to infer from model names
         
     Returns:
         Target model with transferred weights
     """
-    # Try to determine architecture and use specific transfer function
-    source_name = source_model.name.lower()
-    target_name = target_model.name.lower()
+    # Use provided architecture or try to determine from model names
+    if architecture is None:
+        source_name = source_model.name.lower()
+        target_name = target_model.name.lower()
+        
+        if 'alexnet' in source_name and 'alexnet' in target_name:
+            architecture = 'alexnet'
+        elif ('resnet18' in source_name or 'resnet_18' in source_name) and ('resnet18' in target_name or 'resnet_18' in target_name):
+            architecture = 'resnet18'
+        elif 'densenet' in source_name and 'densenet' in target_name:
+            architecture = 'densenet169'
     
-    # If both models appear to be the same architecture, use specific transfer
-    if (('alexnet' in source_name or len(source_model.layers) in range(25, 35)) and 
-        ('alexnet' in target_name or len(target_model.layers) in range(25, 35))):
+    # Use architecture-specific transfer function
+    if architecture == 'alexnet':
         try:
             from utils.model.alexnet_utils import transfer_alexnet_weights
-            return transfer_alexnet_weights(source_model, target_model, verbose)
+            return transfer_alexnet_weights(source_model, target_model)
         except ImportError:
-            if verbose:
-                print("Warning: AlexNet transfer function not found, using generic transfer")
+            print("Warning: AlexNet transfer function not found, using generic transfer")
     
-    elif 'resnet' in source_name and 'resnet' in target_name:
+    elif architecture == 'resnet18':
         try:
-            from utils.model.resnet_utils import transfer_resnet_weights
-            return transfer_resnet_weights(source_model, target_model, verbose)
+            from utils.model.resnet_utils import transfer_resnet18_weights
+            return transfer_resnet18_weights(source_model, target_model)
         except ImportError:
-            if verbose:
-                print("Warning: ResNet transfer function not implemented yet")
+            print("Warning: ResNet18 transfer function not implemented yet")
+            return target_model
     
-    elif 'densenet' in source_name and 'densenet' in target_name:
+    elif architecture == 'densenet169':
         try:
             from utils.model.densenet_utils import transfer_densenet_weights
-            return transfer_densenet_weights(source_model, target_model, verbose)
+            return transfer_densenet_weights(source_model, target_model)
         except ImportError:
-            if verbose:
-                print("Warning: DenseNet transfer function not implemented yet")
+            print("Warning: DenseNet transfer function not implemented yet")
     
     # Fallback to generic transfer
-    if verbose:
-        print("Using generic weight transfer...")
-    return _generic_transfer_weights(source_model, target_model, verbose)
+    print("Using generic weight transfer...")
+    return _generic_transfer_weights(source_model, target_model)
 
 
-def _generic_transfer_weights(source_model: tf.keras.Model, target_model: tf.keras.Model, verbose: bool = True) -> tf.keras.Model:
+def _generic_transfer_weights(source_model: tf.keras.Model, target_model: tf.keras.Model) -> tf.keras.Model:
     """
     Generic weight transfer fallback.
     Only transfers weights for layers with identical configurations.
     """
-    if verbose:
-        print("\nGeneric weight transfer...")
+    print("\nGeneric weight transfer...")
     
     source_layers = [layer for layer in source_model.layers if hasattr(layer, 'get_weights') and len(layer.get_weights()) > 0]
     target_layers = [layer for layer in target_model.layers if hasattr(layer, 'set_weights')]
@@ -384,13 +396,11 @@ def _generic_transfer_weights(source_model: tf.keras.Model, target_model: tf.ker
                 
                 try:
                     tgt_layer.set_weights(src_layer.get_weights())
-                    if verbose:
-                        print(f"✓ Transferred weights: {type(src_layer).__name__} ({src_layer.filters} filters)")
+                    print(f"✓ Transferred weights: {type(src_layer).__name__} ({src_layer.filters} filters)")
                     transferred_count += 1
                     break
                 except Exception as e:
-                    if verbose:
-                        print(f"✗ Failed to transfer {type(src_layer).__name__}: {e}")
+                    print(f"✗ Failed to transfer {type(src_layer).__name__}: {e}")
             
             elif (type(src_layer) == type(tgt_layer) and 
                   hasattr(src_layer, 'units') and hasattr(tgt_layer, 'units') and
@@ -404,16 +414,13 @@ def _generic_transfer_weights(source_model: tf.keras.Model, target_model: tf.ker
                         tgt_weights_shape = tgt_layer.get_weights()
                         if len(tgt_weights_shape) > 0 and src_weights[0].shape == tgt_weights_shape[0].shape:
                             tgt_layer.set_weights(src_weights)
-                            if verbose:
-                                print(f"✓ Transferred weights: {type(src_layer).__name__} ({src_layer.units} units)")
+                            print(f"✓ Transferred weights: {type(src_layer).__name__} ({src_layer.units} units)")
                             transferred_count += 1
                             break
                 except Exception as e:
-                    if verbose:
-                        print(f"✗ Failed to transfer {type(src_layer).__name__}: {e}")
+                    print(f"✗ Failed to transfer {type(src_layer).__name__}: {e}")
     
-    if verbose:
-        print(f"\nGeneric weight transfer complete: {transferred_count} layers transferred")
+    print(f"\nGeneric weight transfer complete: {transferred_count} layers transferred")
     
     return target_model
 

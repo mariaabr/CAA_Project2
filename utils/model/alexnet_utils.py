@@ -114,7 +114,7 @@ def adapt_alexnet_for_resolution(model, target_size, dropout_rate=None):
     return adapted_model
 
 
-def transfer_alexnet_weights(source_model, target_model, verbose=True):
+def transfer_alexnet_weights(source_model, target_model):
     """
     Transfer weights between AlexNet models with potentially different input sizes.
     
@@ -124,13 +124,11 @@ def transfer_alexnet_weights(source_model, target_model, verbose=True):
     Args:
         source_model: Source AlexNet model
         target_model: Target AlexNet model
-        verbose: Whether to print transfer information
         
     Returns:
         Target model with transferred weights
     """
-    if verbose:
-        print("\nTransferring AlexNet weights...")
+    print("\nTransferring AlexNet weights...")
     
     # Define the layer types we expect in AlexNet in order
     expected_layer_types = [
@@ -180,15 +178,12 @@ def transfer_alexnet_weights(source_model, target_model, verbose=True):
                     if (src_layer.filters == tgt_layer.filters and 
                         src_layer.kernel_size == tgt_layer.kernel_size):
                         tgt_layer.set_weights(src_layer.get_weights())
-                        if verbose:
-                            print(f"✓ Conv2D layer {i}: {src_layer.filters} filters")
+                        print(f"✓ Conv2D layer {i}: {src_layer.filters} filters")
                         transferred_count += 1
                     else:
-                        if verbose:
-                            print(f"✗ Conv2D layer {i}: incompatible ({src_layer.filters} vs {tgt_layer.filters} filters)")
+                        print(f"✗ Conv2D layer {i}: incompatible ({src_layer.filters} vs {tgt_layer.filters} filters)")
                 except Exception as e:
-                    if verbose:
-                        print(f"✗ Conv2D layer {i}: transfer failed - {e}")
+                    print(f"✗ Conv2D layer {i}: transfer failed - {e}")
                         
             elif isinstance(src_layer, tf.keras.layers.Dense):
                 # For Dense layers, only transfer if not the final layer or if dimensions match
@@ -199,35 +194,28 @@ def transfer_alexnet_weights(source_model, target_model, verbose=True):
                     # Skip output layer if dimensions don't match (num_classes difference)
                     if i == len(source_model.layers) - 1:  # Output layer
                         if src_weights[0].shape[1] != tgt_weights[0].shape[1]:
-                            if verbose:
-                                print(f"✗ Dense layer {i} (output): skipping due to different output dimensions")
+                            print(f"✗ Dense layer {i} (output): skipping due to different output dimensions")
                             continue
                     
                     # Check if weight dimensions match
                     if src_weights[0].shape == tgt_weights[0].shape:
                         tgt_layer.set_weights(src_weights)
-                        if verbose:
-                            print(f"✓ Dense layer {i}: {src_layer.units} units")
+                        print(f"✓ Dense layer {i}: {src_layer.units} units")
                         transferred_count += 1
                     else:
-                        if verbose:
-                            print(f"✗ Dense layer {i}: incompatible shapes {src_weights[0].shape} vs {tgt_weights[0].shape}")
+                        print(f"✗ Dense layer {i}: incompatible shapes {src_weights[0].shape} vs {tgt_weights[0].shape}")
                 except Exception as e:
-                    if verbose:
-                        print(f"✗ Dense layer {i}: transfer failed - {e}")
+                    print(f"✗ Dense layer {i}: transfer failed - {e}")
                         
             elif isinstance(src_layer, tf.keras.layers.BatchNormalization):
                 # Transfer BatchNorm weights
                 try:
                     tgt_layer.set_weights(src_layer.get_weights())
-                    if verbose:
-                        print(f"✓ BatchNorm layer {i}")
+                    print(f"✓ BatchNorm layer {i}")
                     transferred_count += 1
                 except Exception as e:
-                    if verbose:
-                        print(f"✗ BatchNorm layer {i}: transfer failed - {e}")
+                    print(f"✗ BatchNorm layer {i}: transfer failed - {e}")
     
-    if verbose:
-        print(f"\nAlexNet weight transfer complete: {transferred_count} layers transferred")
+    print(f"\nAlexNet weight transfer complete: {transferred_count} layers transferred")
     
     return target_model
