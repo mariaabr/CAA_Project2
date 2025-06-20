@@ -18,7 +18,7 @@ To get started with this project, follow the steps below:
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/miguel-silva48/CAA_Project.git
+git clone https://github.com/mariaabr/CAA_Project2.git
 cd CAA_Project
 ```
 
@@ -45,16 +45,16 @@ To run the project, follow these steps:
 You can run the notebooks in Google Colab with GPU acceleration:
 
 1. Access the notebook via GitHub by changing the GitHub URL to a Colab URL:
-    - Replace `https://github.com/miguel-silva48/CAA_Project/blob/main/notebooks/<notebook_name>.ipynb` with:
-    - `https://githubtocolab.com/miguel-silva48/CAA_Project/blob/main/notebooks/<notebook_name>.ipynb`, this will take you to:
-    - `https://colab.research.google.com/github/miguel-silva48/CAA_Project/blob/main/notebooks/<notebook_name>.ipynb`
+    - Replace `https://github.com/mariaabr/CAA_Project2/blob/main/notebooks/<notebook_name>.ipynb` with:
+    - `https://githubtocolab.com/mariaabr/CAA_Project2/blob/main/notebooks/<notebook_name>.ipynb`, this will take you to:
+    - `https://colab.research.google.com/github/mariaabr/CAA_Project2/blob/main/notebooks/<notebook_name>.ipynb`
 
 2. Change runtime to GPU:
     - Click "Runtime" > "Change runtime type" > Select "GPU" (NVIDIA T4 GPU was used during development)
 
 3. Run the following at the beginning of the notebook to clone the repository and set up the environment:
     ```python
-    !git clone https://github.com/miguel-silva48/CAA_Project.git
+    !git clone https://github.com/mariaabr/CAA_Project2.git
     %cd CAA_Project/notebooks
     ```
     This ensures that all utility files needed for execution are properly found.
