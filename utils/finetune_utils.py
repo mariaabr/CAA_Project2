@@ -118,11 +118,11 @@ def adapt_model_for_resolution(model: tf.keras.Model, target_size: int, architec
         if 'alexnet' in model_name:
             architecture = 'alexnet'
         elif 'resnet18' in model_name or 'resnet_18' in model_name:
-            architecture = 'resnet18'
+            architecture = 'resnet_18'
         elif 'resnet50' in model_name or 'resnet_50' in model_name:
-            architecture = 'resnet50'
+            architecture = 'resnet_50'
         elif 'densenet' in model_name:
-            architecture = 'densenet169'
+            architecture = 'densenet_169'
     
     if architecture == 'alexnet':
         # Use AlexNet-specific adapter
@@ -132,7 +132,7 @@ def adapt_model_for_resolution(model: tf.keras.Model, target_size: int, architec
         except ImportError:
             print("Warning: AlexNet utils not found, using generic adaptation")
     
-    elif architecture in ['resnet18', 'resnet_18']:
+    elif architecture == 'resnet_18':
         # Use ResNet18-specific adapter
         try:
             from utils.model.resnet_utils import adapt_resnet18_for_resolution
@@ -140,8 +140,17 @@ def adapt_model_for_resolution(model: tf.keras.Model, target_size: int, architec
         except ImportError:
             print("Warning: ResNet18 adapter not implemented yet")
             return None
-    
-    elif architecture in ['densenet169', 'densenet_169']:
+
+    elif architecture == 'resnet_50':
+        # Use ResNet50-specific adapter
+        try:
+            from utils.model.resnet_utils import adapt_resnet50_for_resolution
+            return adapt_resnet50_for_resolution(model, target_size, dropout_rate)
+        except ImportError:
+            print("Warning: ResNet50 adapter not implemented yet")
+            return None
+
+    elif architecture == 'densenet_169':
         # Use DenseNet-specific adapter (when implemented)
         try:
             from utils.model.densenet_utils import adapt_densenet_for_resolution
@@ -249,7 +258,7 @@ def _generic_adapt_model(model: tf.keras.Model, target_size: int, dropout_rate: 
     return adapted_model
 
 
-def freeze_layers(model: tf.keras.Model, freeze_until_layer: str = None, freeze_ratio: float = None) -> tf.keras.Model:
+def freeze_layers(model: tf.keras.Model, freeze_until_layer: str = None, freeze_ratio: float = None, architecture: str = None) -> tf.keras.Model:
     """
     Freeze layers in a model for fine-tuning.
     
@@ -257,6 +266,7 @@ def freeze_layers(model: tf.keras.Model, freeze_until_layer: str = None, freeze_
         model (tf.keras.Model): Model to freeze layers in
         freeze_until_layer (str, optional): Name of the layer up to which to freeze
         freeze_ratio (float, optional): Ratio of layers to freeze (0.0 to 1.0)
+        architecture (str, optional): Architecture name (for logging purposes)
         
     Returns:
         tf.keras.Model: Model with frozen layers
@@ -314,6 +324,7 @@ def generate_tuned_model_path(original_params: Dict[str, Any],
     learning_rate = original_params['learning_rate']
     dropout_rate = original_params['dropout_rate']
     
+    
     filename = f"{architecture}_tuned{augmented_str}_b{batch_size}_lr{learning_rate}_dr{dropout_rate}_{new_image_size}px_pneumonia_model.keras"
     
     return os.path.join(output_path, filename)
@@ -342,9 +353,11 @@ def transfer_compatible_weights(source_model: tf.keras.Model, target_model: tf.k
         if 'alexnet' in source_name and 'alexnet' in target_name:
             architecture = 'alexnet'
         elif ('resnet18' in source_name or 'resnet_18' in source_name) and ('resnet18' in target_name or 'resnet_18' in target_name):
-            architecture = 'resnet18'
+            architecture = 'resnet_18'
+        elif ('resnet50' in source_name or 'resnet_50' in source_name) and ('resnet50' in target_name or 'resnet_50' in target_name):
+            architecture = 'resnet_50'
         elif 'densenet' in source_name and 'densenet' in target_name:
-            architecture = 'densenet169'
+            architecture = 'densenet_169'
     
     # Use architecture-specific transfer function
     if architecture == 'alexnet':
@@ -354,15 +367,23 @@ def transfer_compatible_weights(source_model: tf.keras.Model, target_model: tf.k
         except ImportError:
             print("Warning: AlexNet transfer function not found, using generic transfer")
     
-    elif architecture == 'resnet18':
+    elif architecture == 'resnet_18':
         try:
             from utils.model.resnet_utils import transfer_resnet18_weights
             return transfer_resnet18_weights(source_model, target_model)
         except ImportError:
             print("Warning: ResNet18 transfer function not implemented yet")
             return target_model
-    
-    elif architecture == 'densenet169':
+
+    elif architecture == 'resnet_50':
+        try:
+            from utils.model.resnet_utils import transfer_resnet50_weights
+            return transfer_resnet50_weights(source_model, target_model)
+        except ImportError:
+            print("Warning: ResNet50 transfer function not implemented yet")
+            return target_model
+
+    elif architecture == 'densenet_169':
         try:
             from utils.model.densenet_utils import transfer_densenet_weights
             return transfer_densenet_weights(source_model, target_model)
@@ -446,17 +467,17 @@ def create_architecture_specific_model(architecture: str, input_shape: tuple, nu
         from utils.model.alexnet_utils import build_alexnet
         return build_alexnet(input_shape=input_shape, dropout_rate=dropout_rate)
     
-    elif architecture == 'resnet18':
+    elif architecture == 'resnet_18':
         from utils.model.resnet_utils import build_resnet18
         return build_resnet18(input_shape=input_shape, dropout_rate=dropout_rate)
     
-    elif architecture == 'resnet50':
+    elif architecture == 'resnet_50':
         from utils.model.resnet_utils import build_resnet50
         return build_resnet50(input_shape=input_shape, dropout_rate=dropout_rate)
     
-    elif architecture == 'densenet169':
+    elif architecture == 'densenet_169':
         from utils.model.densenet_utils import build_densenet169_model
         return build_densenet169_model(input_shape=input_shape, dropout_rate=dropout_rate)
 
     else:
-        raise NotImplementedError(f"Architecture {architecture} not implemented. Available: alexnet, resnet18, resnet50, densenet169")
+        raise NotImplementedError(f"Architecture {architecture} not implemented. Available: alexnet, resnet_18, resnet_50, densenet_169")
