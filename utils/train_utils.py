@@ -1,6 +1,6 @@
 from tensorflow.keras import callbacks
 
-def get_callbacks(model_path, monitor='val_AUC', mode='max'):
+def get_callbacks(model_path, monitor='val_AUC', mode='max', patience=10, factor=0.2):
     """Get standard callbacks for model training"""
     checkpoint_callback = callbacks.ModelCheckpoint(
         model_path,
@@ -12,14 +12,14 @@ def get_callbacks(model_path, monitor='val_AUC', mode='max'):
     early_stop_callback = callbacks.EarlyStopping(
         monitor=monitor,
         mode=mode,
-        patience=10,
+        patience=patience,
         restore_best_weights=True
     )
     
     reduce_lr_callback = callbacks.ReduceLROnPlateau(
         monitor='val_loss',
-        factor=0.2,
-        patience=5
+        factor=factor,
+        patience=patience//2
     )
     
     all_callbacks = [
