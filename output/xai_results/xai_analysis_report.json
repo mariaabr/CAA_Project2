@@ -1,46 +1,172 @@
 {
   "summary": {
-    "total_models_analyzed": 4,
+    "total_models_analyzed": 12,
     "xai_methods": [
       "GradCAM",
       "LIME",
       "SHAP"
     ],
-    "total_misclassifications": 7,
-    "total_correct_classifications": 10
+    "total_misclassifications": 22,
+    "total_correct_classifications": 12
   },
   "model_summaries": {
-    "AlexNet_28px": {
-      "model_accuracy": 0.7,
-      "gradcam_success_rate": 1.0,
-      "lime_success_rate": 0.15,
-      "shap_success_rate": 1.0,
-      "total_samples_analyzed": 20
-    },
-    "AlexNet_64px": {
-      "model_accuracy": 0.8,
-      "gradcam_success_rate": 1.0,
-      "lime_success_rate": 0.15,
-      "shap_success_rate": 1.0,
-      "total_samples_analyzed": 20
-    },
-    "ResNet18_28px": {
-      "model_accuracy": 0.65,
+    "ResNet50_128px": {
+      "model_accuracy": 0.825,
       "gradcam_success_rate": 1.0,
       "lime_success_rate": 0.0,
       "shap_success_rate": 1.0,
-      "total_samples_analyzed": 20
+      "total_samples_analyzed": 40
     },
     "ResNet18_64px": {
+      "model_accuracy": 0.775,
+      "gradcam_success_rate": 1.0,
+      "lime_success_rate": 0.0,
+      "shap_success_rate": 1.0,
+      "total_samples_analyzed": 40
+    },
+    "ResNet50_28px": {
       "model_accuracy": 0.75,
       "gradcam_success_rate": 1.0,
       "lime_success_rate": 0.0,
       "shap_success_rate": 1.0,
-      "total_samples_analyzed": 20
+      "total_samples_analyzed": 40
+    },
+    "DenseNet169_28px": {
+      "model_accuracy": 0.725,
+      "gradcam_success_rate": 1.0,
+      "lime_success_rate": 0.125,
+      "shap_success_rate": 0.0,
+      "total_samples_analyzed": 40
+    },
+    "DenseNet169_64px": {
+      "model_accuracy": 0.85,
+      "gradcam_success_rate": 0.0,
+      "lime_success_rate": 0.125,
+      "shap_success_rate": 0.0,
+      "total_samples_analyzed": 40
+    },
+    "ResNet18_128px": {
+      "model_accuracy": 0.8,
+      "gradcam_success_rate": 0.0,
+      "lime_success_rate": 0.0,
+      "shap_success_rate": 1.0,
+      "total_samples_analyzed": 40
+    },
+    "AlexNet_64px": {
+      "model_accuracy": 0.8,
+      "gradcam_success_rate": 1.0,
+      "lime_success_rate": 0.125,
+      "shap_success_rate": 1.0,
+      "total_samples_analyzed": 40
+    },
+    "AlexNet_28px": {
+      "model_accuracy": 0.7,
+      "gradcam_success_rate": 1.0,
+      "lime_success_rate": 0.125,
+      "shap_success_rate": 1.0,
+      "total_samples_analyzed": 40
+    },
+    "AlexNet_128px": {
+      "model_accuracy": 0.775,
+      "gradcam_success_rate": 1.0,
+      "lime_success_rate": 0.125,
+      "shap_success_rate": 1.0,
+      "total_samples_analyzed": 40
+    },
+    "DenseNet169_128px": {
+      "model_accuracy": 0.85,
+      "gradcam_success_rate": 1.0,
+      "lime_success_rate": 0.125,
+      "shap_success_rate": 0.0,
+      "total_samples_analyzed": 40
+    },
+    "ResNet50_64px": {
+      "model_accuracy": 0.775,
+      "gradcam_success_rate": 0.0,
+      "lime_success_rate": 0.0,
+      "shap_success_rate": 1.0,
+      "total_samples_analyzed": 40
+    },
+    "ResNet18_28px": {
+      "model_accuracy": 0.7,
+      "gradcam_success_rate": 1.0,
+      "lime_success_rate": 0.0,
+      "shap_success_rate": 1.0,
+      "total_samples_analyzed": 40
     }
   },
   "similarity_analysis": {
-    "AlexNet_28px": {
+    "ResNet50_128px": {
+      "GradCAM_vs_LIME": {
+        "mean_cosine": NaN,
+        "mean_pearson": NaN,
+        "mean_spearman": NaN,
+        "num_comparisons": 0
+      },
+      "GradCAM_vs_SHAP": {
+        "mean_cosine": NaN,
+        "mean_pearson": NaN,
+        "mean_spearman": NaN,
+        "num_comparisons": 0
+      }
+    },
+    "ResNet18_64px": {
+      "GradCAM_vs_LIME": {
+        "mean_cosine": NaN,
+        "mean_pearson": NaN,
+        "mean_spearman": NaN,
+        "num_comparisons": 0
+      },
+      "GradCAM_vs_SHAP": {
+        "mean_cosine": NaN,
+        "mean_pearson": NaN,
+        "mean_spearman": NaN,
+        "num_comparisons": 0
+      }
+    },
+    "ResNet50_28px": {
+      "GradCAM_vs_LIME": {
+        "mean_cosine": NaN,
+        "mean_pearson": NaN,
+        "mean_spearman": NaN,
+        "num_comparisons": 0
+      },
+      "GradCAM_vs_SHAP": {
+        "mean_cosine": NaN,
+        "mean_pearson": NaN,
+        "mean_spearman": NaN,
+        "num_comparisons": 0
+      }
+    },
+    "DenseNet169_28px": {
+      "GradCAM_vs_LIME": {
+        "mean_cosine": NaN,
+        "mean_pearson": NaN,
+        "mean_spearman": NaN,
+        "num_comparisons": 0
+      },
+      "GradCAM_vs_SHAP": {
+        "mean_cosine": NaN,
+        "mean_pearson": NaN,
+        "mean_spearman": NaN,
+        "num_comparisons": 0
+      }
+    },
+    "DenseNet169_64px": {
+      "GradCAM_vs_LIME": {
+        "mean_cosine": NaN,
+        "mean_pearson": NaN,
+        "mean_spearman": NaN,
+        "num_comparisons": 0
+      },
+      "GradCAM_vs_SHAP": {
+        "mean_cosine": NaN,
+        "mean_pearson": NaN,
+        "mean_spearman": NaN,
+        "num_comparisons": 0
+      }
+    },
+    "ResNet18_128px": {
       "GradCAM_vs_LIME": {
         "mean_cosine": NaN,
         "mean_pearson": NaN,
@@ -68,7 +194,7 @@
         "num_comparisons": 0
       }
     },
-    "ResNet18_28px": {
+    "AlexNet_28px": {
       "GradCAM_vs_LIME": {
         "mean_cosine": NaN,
         "mean_pearson": NaN,
@@ -82,7 +208,49 @@
         "num_comparisons": 0
       }
     },
-    "ResNet18_64px": {
+    "AlexNet_128px": {
+      "GradCAM_vs_LIME": {
+        "mean_cosine": NaN,
+        "mean_pearson": NaN,
+        "mean_spearman": NaN,
+        "num_comparisons": 0
+      },
+      "GradCAM_vs_SHAP": {
+        "mean_cosine": NaN,
+        "mean_pearson": NaN,
+        "mean_spearman": NaN,
+        "num_comparisons": 0
+      }
+    },
+    "DenseNet169_128px": {
+      "GradCAM_vs_LIME": {
+        "mean_cosine": NaN,
+        "mean_pearson": NaN,
+        "mean_spearman": NaN,
+        "num_comparisons": 0
+      },
+      "GradCAM_vs_SHAP": {
+        "mean_cosine": NaN,
+        "mean_pearson": NaN,
+        "mean_spearman": NaN,
+        "num_comparisons": 0
+      }
+    },
+    "ResNet50_64px": {
+      "GradCAM_vs_LIME": {
+        "mean_cosine": NaN,
+        "mean_pearson": NaN,
+        "mean_spearman": NaN,
+        "num_comparisons": 0
+      },
+      "GradCAM_vs_SHAP": {
+        "mean_cosine": NaN,
+        "mean_pearson": NaN,
+        "mean_spearman": NaN,
+        "num_comparisons": 0
+      }
+    },
+    "ResNet18_28px": {
       "GradCAM_vs_LIME": {
         "mean_cosine": NaN,
         "mean_pearson": NaN,
@@ -100,15 +268,13 @@
   "misclassification_analysis": {
     "misclassified_by_all": [
       0,
+      1,
       2,
       4,
       5,
       6,
       7,
-      8
-    ],
-    "correctly_classified_by_all": [
-      3,
+      8,
       10,
       11,
       12,
@@ -117,13 +283,34 @@
       15,
       16,
       17,
-      18
+      18,
+      20,
+      25,
+      27,
+      30,
+      36
     ],
-    "total_samples_analyzed": 20,
+    "correctly_classified_by_all": [
+      3,
+      21,
+      22,
+      24,
+      26,
+      29,
+      31,
+      32,
+      33,
+      34,
+      35,
+      37
+    ],
+    "total_samples_analyzed": 40,
     "models_analyzed": [
-      "AlexNet_64px",
-      "ResNet18_64px"
+      "ResNet50_128px",
+      "ResNet18_128px",
+      "AlexNet_128px",
+      "DenseNet169_128px"
     ],
-    "resolution_analyzed": 64
+    "resolution_analyzed": 128
   }
 }
