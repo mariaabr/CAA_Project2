@@ -187,12 +187,25 @@ def add_evaluation_metrics(run_info, run):
             # Extract metrics from classification report if available for comparison
             class_report = eval_data.get('classification_report', {})
             classes = class_report.get('classes', {})
+            averages = class_report.get('averages', {})
             
             # Get pneumonia metrics from classification report
             pneumonia_class = classes.get('Pneumonia', {})
             run_info['precision_pneumonia'] = pneumonia_class.get('precision')
             run_info['recall_pneumonia'] = pneumonia_class.get('recall')
             run_info['f1_pneumonia'] = pneumonia_class.get('f1-score')
+            
+            # Use weighted average as the main metrics (more representative for imbalanced dataset)
+            weighted_avg = averages.get('weighted avg', {})
+            run_info['precision'] = weighted_avg.get('precision')
+            run_info['recall'] = weighted_avg.get('recall')
+            run_info['f1_score'] = weighted_avg.get('f1-score')
+            
+            # Also store macro average as backup
+            macro_avg = averages.get('macro avg', {})
+            run_info['precision_macro'] = macro_avg.get('precision')
+            run_info['recall_macro'] = macro_avg.get('recall')
+            run_info['f1_score_macro'] = macro_avg.get('f1-score')
             
         except (TypeError, ValueError) as e:
             print(f"Warning: Error processing confusion matrix in {run_info['filename']}: {cm}. Error: {e}")
@@ -218,10 +231,11 @@ def finalize_dataframe(all_data):
         'batch_size', 'learning_rate', 'dropout_rate', 'dropout_start', 'dropout_end',
         'exec_time', 'test_accuracy', 'test_auc', 'test_loss',
         'tn', 'fp', 'fn', 'tp', 
-        'precision', 'precision_pneumonia', 
+        'precision', 'recall', 'f1_score',
+        'precision_pneumonia', 'recall_pneumonia', 'f1_pneumonia',
+        'precision_macro', 'recall_macro', 'f1_score_macro',
         'true_positive_rate', 'false_negative_rate',
-        'true_negative_rate', 'false_positive_rate',
-        'recall_pneumonia', 'f1_pneumonia'
+        'true_negative_rate', 'false_positive_rate'
     ]
     numeric_cols.extend([f'final_{metric}' for metric in ['val_loss', 'val_accuracy', 'val_AUC']])
     
