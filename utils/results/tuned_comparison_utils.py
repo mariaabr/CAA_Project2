@@ -70,8 +70,12 @@ def create_model_comparison_plots(df):
 
 def _plot_metric_by_arch_resolution(df, metric, title, ax):
     """Helper function to create bar plots for metrics by architecture and resolution."""
-    # Create pivot table for bar plot
+    # Create pivot table for bar plot with ordered columns
     pivot_data = df.pivot_table(values=metric, index='architecture', columns='resolution', aggfunc='mean')
+    
+    # Ensure columns are in the correct order: 28, 64, 128
+    available_resolutions = sorted([col for col in pivot_data.columns if col in [28, 64, 128]])
+    pivot_data = pivot_data.reindex(columns=available_resolutions)
     
     # Create bar plot
     pivot_data.plot(kind='bar', ax=ax, width=0.8)
@@ -87,7 +91,10 @@ def _plot_fn_vs_fp_scatter(df, ax):
     """Helper function to create scatter plot of FN rate vs FP rate by resolution."""
     resolution_colors = {28: 'blue', 64: 'orange', 128: 'green'}
     
-    for resolution in df['resolution'].unique():
+    # Sort resolutions in correct order: 28, 64, 128
+    sorted_resolutions = sorted(df['resolution'].unique())
+    
+    for resolution in sorted_resolutions:
         subset = df[df['resolution'] == resolution]
         ax.scatter(subset['false_negative_rate'], subset['false_positive_rate'], 
                   label=f'{resolution}px', alpha=0.7, s=100,
@@ -176,7 +183,7 @@ def create_performance_heatmaps(df):
     Returns:
     --------
     fig : matplotlib.figure.Figure
-        Figure with 3 heatmap subplots
+        Figure with 4 heatmap subplots in 2x2 layout
     """
     # Prepare data
     viz_df = df.copy()
@@ -189,27 +196,58 @@ def create_performance_heatmaps(df):
     
     if 'false_negative_rate' not in viz_df.columns:
         viz_df['false_negative_rate'] = viz_df['fn'] / (viz_df['fn'] + viz_df['tp'])
+    if 'false_positive_rate' not in viz_df.columns:
+        viz_df['false_positive_rate'] = viz_df['fp'] / (viz_df['fp'] + viz_df['tn'])
     
-    # Create heatmap plots
-    fig, axes = plt.subplots(1, 3, figsize=(20, 6))
+    # Create heatmap plots in 2x2 layout
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
     fig.suptitle('Performance Heatmaps: Architecture vs Resolution', fontsize=14, fontweight='bold')
     
-    metrics_to_plot = ['false_negative_rate', 'test_auc', 'test_accuracy']
-    metric_titles = ['False Negative Rate', 'AUC Score', 'Test Accuracy']
+    metrics_to_plot = ['false_negative_rate', 'false_positive_rate', 'test_auc', 'test_accuracy']
+    metric_titles = ['False Negative Rate', 'False Positive Rate', 'AUC Score', 'Test Accuracy']
     
-    for i, (metric, title) in enumerate(zip(metrics_to_plot, metric_titles)):
+    # Define color scales with balanced ranges for pairs
+    color_configs = [
+        {'cmap': 'RdYlGn_r', 'vmin': None, 'vmax': None},  # FN rate
+        {'cmap': 'RdYlGn_r', 'vmin': None, 'vmax': None},  # FP rate  
+        {'cmap': 'RdYlGn', 'vmin': None, 'vmax': None},    # AUC
+        {'cmap': 'RdYlGn', 'vmin': None, 'vmax': None}     # Accuracy
+    ]
+    
+    # Calculate balanced scales for FN/FP rates and AUC/Accuracy
+    fn_vals = viz_df['false_negative_rate'].values
+    fp_vals = viz_df['false_positive_rate'].values
+    auc_vals = viz_df['test_auc'].values
+    acc_vals = viz_df['test_accuracy'].values
+    
+    fn_fp_min = min(fn_vals.min(), fp_vals.min())
+    fn_fp_max = max(fn_vals.max(), fp_vals.max())
+    auc_acc_min = min(auc_vals.min(), acc_vals.min())
+    auc_acc_max = max(auc_vals.max(), acc_vals.max())
+    
+    # Set balanced scales
+    color_configs[0].update({'vmin': fn_fp_min, 'vmax': fn_fp_max})  # FN
+    color_configs[1].update({'vmin': fn_fp_min, 'vmax': fn_fp_max})  # FP
+    color_configs[2].update({'vmin': auc_acc_min, 'vmax': auc_acc_max})  # AUC
+    color_configs[3].update({'vmin': auc_acc_min, 'vmax': auc_acc_max})  # Acc
+    
+    for i, (metric, title, config) in enumerate(zip(metrics_to_plot, metric_titles, color_configs)):
+        row, col = i // 2, i % 2
+        ax = axes[row, col]
+        
         pivot_data = viz_df.pivot_table(values=metric, index='architecture', columns='resolution', aggfunc='mean')
         
-        if metric == 'false_negative_rate':
-            sns.heatmap(pivot_data, annot=True, fmt='.4f', cmap='RdYlGn_r', 
-                       ax=axes[i], cbar_kws={'label': title})
-        else:
-            sns.heatmap(pivot_data, annot=True, fmt='.4f', cmap='RdYlGn', 
-                       ax=axes[i], cbar_kws={'label': title})
+        # Ensure columns are in the correct order: 28, 64, 128
+        available_resolutions = sorted([col for col in pivot_data.columns if col in [28, 64, 128]])
+        pivot_data = pivot_data.reindex(columns=available_resolutions)
         
-        axes[i].set_title(f'{title} by Architecture and Resolution')
-        axes[i].set_xlabel('Resolution (px)')
-        axes[i].set_ylabel('Architecture')
+        sns.heatmap(pivot_data, annot=True, fmt='.4f', 
+                   cmap=config['cmap'], vmin=config['vmin'], vmax=config['vmax'],
+                   ax=ax, cbar_kws={'label': title})
+        
+        ax.set_title(f'{title} by Architecture and Resolution')
+        ax.set_xlabel('Resolution (px)')
+        ax.set_ylabel('Architecture')
     
     plt.tight_layout()
     return plt.show()
