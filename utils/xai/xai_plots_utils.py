@@ -353,3 +353,114 @@ def analyze_misclassifications(predictions_data, sample_images, sample_labels, o
         'models_analyzed': list(model_results.keys()),
         'resolution_analyzed': resolution
     }
+
+
+def plot_individual_xai_results(model_key, results, images, labels, output_path, num_samples=6):
+    """Create individual XAI visualization for a single model."""
+    
+    arch, resolution = model_key
+    
+    # Select samples to visualize (mix of correct and incorrect predictions)
+    pred_classes = results['pred_classes']
+    true_classes = results['true_classes']
+    
+    # Get some correct and incorrect predictions
+    correct_indices = np.where(pred_classes == true_classes)[0]
+    incorrect_indices = np.where(pred_classes != true_classes)[0]
+    
+    # Select balanced samples
+    samples_to_show = []
+    if len(correct_indices) > 0:
+        samples_to_show.extend(correct_indices[:num_samples//2])
+    if len(incorrect_indices) > 0:
+        samples_to_show.extend(incorrect_indices[:num_samples//2])
+    
+    # Fill up to num_samples if needed
+    all_indices = list(range(len(images)))
+    while len(samples_to_show) < min(num_samples, len(images)):
+        for idx in all_indices:
+            if idx not in samples_to_show:
+                samples_to_show.append(idx)
+                break
+    
+    samples_to_show = samples_to_show[:num_samples]
+    
+    # Create visualization
+    n_methods = sum([
+        results['gradcam'][0] is not None if results['gradcam'] else False,
+        results['lime'][0] is not None if results['lime'] else False,
+        results['shap'] is not None
+    ])
+    
+    if n_methods == 0:
+        print(f"No XAI results available for {arch} {resolution}px")
+        return
+    
+    fig, axes = plt.subplots(len(samples_to_show), n_methods + 1, 
+                            figsize=(4 * (n_methods + 1), 3 * len(samples_to_show)))
+    
+    if len(samples_to_show) == 1:
+        axes = axes.reshape(1, -1)
+    
+    class_names = ['Normal', 'Pneumonia']
+    
+    for row, sample_idx in enumerate(samples_to_show):
+        col = 0
+        
+        # Original image
+        img = images[sample_idx].squeeze()
+        axes[row, col].imshow(img, cmap='gray')
+        
+        true_label = class_names[true_classes[sample_idx]]
+        pred_label = class_names[pred_classes[sample_idx]]
+        confidence = results['pred_probs'][sample_idx]
+        
+        title = f'Original\nTrue: {true_label}\nPred: {pred_label} ({confidence:.2f})'
+        axes[row, col].set_title(title, fontsize=9)
+        axes[row, col].axis('off')
+        col += 1
+        
+        # GradCAM
+        if results['gradcam'] and results['gradcam'][sample_idx] is not None:
+            heatmap = results['gradcam'][sample_idx]
+            axes[row, col].imshow(img, cmap='gray')
+            axes[row, col].imshow(heatmap, cmap='jet', alpha=0.5)
+            axes[row, col].set_title('GradCAM', fontsize=9)
+            axes[row, col].axis('off')
+            col += 1
+        
+        # LIME
+        if results['lime'] and results['lime'][sample_idx] is not None:
+            try:
+                lime_img, lime_mask = results['lime'][sample_idx].get_image_and_mask(
+                    pred_classes[sample_idx], positive_only=True, hide_rest=False)
+                axes[row, col].imshow(lime_img)
+                axes[row, col].set_title('LIME', fontsize=9)
+                axes[row, col].axis('off')
+                col += 1
+            except:
+                # Skip if LIME visualization fails
+                pass
+        
+        # SHAP
+        if results['shap'] is not None and sample_idx < len(results['shap'][0]):
+            try:
+                shap_heatmap = np.abs(results['shap'][pred_classes[sample_idx]][sample_idx])
+                axes[row, col].imshow(img, cmap='gray')
+                axes[row, col].imshow(shap_heatmap.squeeze(), cmap='Reds', alpha=0.5)
+                axes[row, col].set_title('SHAP', fontsize=9)
+                axes[row, col].axis('off')
+                col += 1
+            except:
+                # Skip if SHAP visualization fails
+                pass
+    
+    plt.suptitle(f'{arch} ({resolution}px) - XAI Analysis', fontsize=14, y=0.98)
+    plt.tight_layout()
+    
+    # Save plot
+    save_path = os.path.join(output_path, f'{arch}_{resolution}px_individual_analysis.png')
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close()
+    
+    print(f"✓ Individual analysis saved: {save_path}")

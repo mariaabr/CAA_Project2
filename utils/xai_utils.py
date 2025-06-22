@@ -24,6 +24,7 @@ from .xai.xai_data_utils import (
 
 # Import plotting utilities
 from .xai.xai_plots_utils import (
+    plot_individual_xai_results,
     plot_xai_comparison_by_architecture,
     plot_xai_comparison_by_resolution,
     analyze_misclassifications
@@ -42,6 +43,7 @@ __all__ = [
     'calculate_xai_metrics',
     'calculate_xai_similarity_metrics',
     'save_xai_analysis_report',
+    'plot_individual_xai_results',
     'plot_xai_comparison_by_architecture',
     'plot_xai_comparison_by_resolution',
     'analyze_misclassifications'
