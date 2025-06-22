@@ -357,10 +357,30 @@ def create_best_models_table(df, top_n=10, sort_by=None):
             print("No valid sort columns. Using default sort by test_auc.")
             sort_by = [('test_auc', False)]
     
-    # Select and copy relevant columns
-    cols = ['model_base_name', 'augmentation', 'batch_size', 'dropout_setting',
-            'test_accuracy', 'test_auc', 'precision_pneumonia', 'recall_pneumonia',
-            'f1_pneumonia', 'false_negative_rate', 'fn', 'exec_time']
+    # Select and copy relevant columns - Updated to handle tuned model structure
+    # Prioritize new column names but fall back to old ones for backward compatibility
+    model_name_col = 'model_name_from_txt' if 'model_name_from_txt' in df.columns else 'model_base_name'
+    dropout_col = 'dropout_rate' if 'dropout_rate' in df.columns else 'dropout_setting'
+    
+    cols = [model_name_col, 'batch_size', dropout_col,
+            'test_accuracy', 'test_auc', 'fn', 'exec_time']
+    
+    # Add precision, recall, F1 columns (handle both naming conventions)
+    precision_cols = ['precision_pneumonia', 'precision']
+    recall_cols = ['recall_pneumonia', 'recall', 'true_positive_rate']  
+    f1_cols = ['f1_pneumonia', 'f1_score']
+    
+    for col_list in [precision_cols, recall_cols, f1_cols]:
+        for col in col_list:
+            if col in df.columns and col not in cols:
+                cols.append(col)
+                break
+    
+    # Add additional metrics
+    additional_metrics = ['false_negative_rate', 'fp', 'augmentation', 'tuned', 'resolution']
+    for metric in additional_metrics:
+        if metric in df.columns and metric not in cols:
+            cols.append(metric)
     
     # Make sure to include all sort columns
     for col, _ in sort_by:
@@ -388,16 +408,21 @@ def create_best_models_table(df, top_n=10, sort_by=None):
     
     # Format columns for display
     format_map = {
-        'test_accuracy': '{:.8f}', 
-        'test_auc': '{:.8f}',
+        'test_accuracy': '{:.6f}', 
+        'test_auc': '{:.6f}',
         'precision_pneumonia': '{:.4f}', 
         'precision': '{:.4f}',
         'recall_pneumonia': '{:.4f}',
+        'recall': '{:.4f}',
         'true_positive_rate': '{:.4f}',
         'false_positive_rate': '{:.4%}',
         'f1_pneumonia': '{:.4f}',
+        'f1_score': '{:.4f}',
         'false_negative_rate': '{:.4%}',
         'fn': '{:.0f}',  # Raw false negatives
+        'fp': '{:.0f}',  # Raw false positives
+        'dropout_rate': '{:.2f}',  # Dropout rate
+        'resolution': '{:.0f}',  # Resolution
         'exec_time': '{:.2f}s'
     }
     
@@ -406,23 +431,30 @@ def create_best_models_table(df, top_n=10, sort_by=None):
         if col in formatted_df.columns:
             formatted_df[col] = formatted_df[col].map(lambda x: fmt.format(x) if pd.notna(x) else 'N/A')
     
-    # Rename columns for better display
+    # Rename columns for better display - Updated to handle both naming conventions
     column_name_map = {
         'model_base_name': 'Model',
-        'augmentation': 'Augmentation',
+        'model_name_from_txt': 'Model',
+        'augmentation': 'Augmentation', 
         'batch_size': 'Batch Size',
         'dropout_setting': 'Dropout Strategy',
+        'dropout_rate': 'Dropout Rate',
         'test_accuracy': 'Accuracy',
         'test_auc': 'AUC',
         'precision_pneumonia': 'Precision (Pneu)',
         'precision': 'Precision',
         'recall_pneumonia': 'Recall (Pneu)',
+        'recall': 'Recall',
         'true_positive_rate': 'TPR',
         'false_positive_rate': 'FPR',
         'f1_pneumonia': 'F1 (Pneu)',
+        'f1_score': 'F1 Score',
         'false_negative_rate': 'FN Rate',
         'fn': 'FN Count',
-        'exec_time': 'Execution Time'
+        'fp': 'FP Count',
+        'exec_time': 'Execution Time',
+        'tuned': 'Tuned',
+        'resolution': 'Resolution (px)'
     }
     
     formatted_df = formatted_df.rename(columns={col: column_name_map.get(col, col) 

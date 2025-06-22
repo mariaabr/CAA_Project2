@@ -1,0 +1,15 @@
+# Explanation - all tuned models were fine-tuned from the others.
+# The non tuned were on 28by28 images, the others have 64px or 128px on their name
+
+alexnet_augmented_b96_lr0.001_dr0.5_pneumonia_model.keras
+alexnet_tuned_augmented_b96_lr0.001_dr0.5_128px_pneumonia_model.keras
+alexnet_tuned_augmented_b96_lr0.001_dr0.5_64px_pneumonia_model.keras
+densenet_169_b96_lr0.001_dr0.5_pneumonia_model.keras
+densenet_169_tuned_b96_lr0.001_dr0.5_128px_pneumonia_model.keras
+densenet_169_tuned_b96_lr0.001_dr0.5_64px_pneumonia_model.keras
+resnet_18_augmented_b64_lr0.001_dr0.5_pneumonia_model.keras
+resnet_18_tuned_augmented_b64_lr0.001_dr0.5_128px_pneumonia_model.keras
+resnet_18_tuned_augmented_b64_lr0.001_dr0.5_64px_pneumonia_model.keras
+resnet_50_augmented_b32_lr0.001_dr0.3_pneumonia_model.keras
+resnet_50_tuned_augmented_b32_lr0.001_dr0.3_128px_pneumonia_model.keras
+resnet_50_tuned_augmented_b32_lr0.001_dr0.3_64px_pneumonia_model.keras
