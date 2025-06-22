@@ -1,4 +1,4 @@
-# CAA_Project - Deep Learning Architectures for Pneumonia Detection: Multi-Scale Analysis with Explainable AI
+# CAA_Project 2 - Deep Learning Approaches for Pneumonia Detection: Multi-Scale Analysis with Explainable AI
 Repository containing the second project developed in the Complementos de Aprendizagem Automática (CAA) course.
 
 ## Table of Contents
